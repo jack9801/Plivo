@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: status-page
+    env: docker
+    region: oregon # Change if needed
+    plan: starter # Change based on your requirements
+    branch: main
+    healthCheckPath: /
+    dockerfile: ./Dockerfile
+    autoDeploy: true
+    numInstances: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: DATABASE_URL
+        sync: false # Mark as sensitive - you'll set this in Render dashboard
+      - key: NEXT_PUBLIC_APP_URL
+        fromService:
+          name: status-page
+          type: web
+          property: host 
