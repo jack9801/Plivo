@@ -16,6 +16,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Explicitly connect to ensure Prisma client is initialized
+    await prisma.$connect();
+
     // Find the user by email
     const user = await prisma.user.findUnique({
       where: { email }
@@ -69,5 +72,8 @@ export async function POST(request: NextRequest) {
       { error: "Authentication failed", details: error instanceof Error ? error.message : "Unknown error" },
       { status: 500 }
     );
+  } finally {
+    // Always disconnect to prevent connection issues
+    await prisma.$disconnect();
   }
 } 

@@ -3,6 +3,11 @@ import { prisma } from "@/lib/db";
 import { createToken } from "@/lib/auth";
 import bcrypt from "bcryptjs";
 
+// Generate a random string to make slugs unique
+function generateRandomString(length = 6) {
+  return Math.random().toString(36).substring(2, 2 + length);
+}
+
 // POST /api/auth/register - Handle user registration
 export async function POST(request: NextRequest) {
   try {
@@ -16,6 +21,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Explicitly connect to ensure Prisma client is initialized
+    await prisma.$connect();
+    
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
       where: { email }
@@ -32,9 +40,9 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create the user and organization in a transaction
-    const result = await prisma.$transaction(async (prisma) => {
+    const result = await prisma.$transaction(async (tx) => {
       // Create the user
-      const user = await prisma.user.create({
+      const user = await tx.user.create({
         data: {
           email,
           password: hashedPassword
@@ -43,14 +51,17 @@ export async function POST(request: NextRequest) {
 
       // If organization name is provided, create an organization too
       if (organizationName) {
-        // Generate slug from name if not provided
-        const slug = organizationSlug || organizationName
+        // Generate slug from name if not provided and add random suffix for uniqueness
+        const baseSlug = organizationSlug || organizationName
           .toLowerCase()
           .replace(/[^a-z0-9]+/g, '-')
           .replace(/(^-|-$)/g, '');
+        
+        // Add random suffix to ensure uniqueness
+        const slug = `${baseSlug}-${generateRandomString()}`;
 
         // Create the organization
-        const organization = await prisma.organization.create({
+        const organization = await tx.organization.create({
           data: {
             name: organizationName,
             slug
@@ -58,7 +69,7 @@ export async function POST(request: NextRequest) {
         });
 
         // Add the user as an ADMIN member of the organization
-        const member = await prisma.member.create({
+        const member = await tx.member.create({
           data: {
             userId: user.id,
             organizationId: organization.id,
@@ -98,5 +109,8 @@ export async function POST(request: NextRequest) {
       { error: "Registration failed", details: error instanceof Error ? error.message : "Unknown error" },
       { status: 500 }
     );
+  } finally {
+    // Always disconnect to prevent connection issues
+    await prisma.$disconnect();
   }
 } 
