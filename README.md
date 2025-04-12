@@ -91,6 +91,28 @@ The public status page is available at the root URL `/` and shows:
    npm start
    ```
 
+### Windows-specific Deployment
+
+For Windows users, a build script is provided to simplify the deployment process:
+
+1. Run the build script:
+   ```
+   .\build.bat
+   ```
+   This script will:
+   - Check for Node.js and npm
+   - Create necessary configuration files
+   - Install dependencies
+   - Generate the Prisma client
+   - Create environment files if they don't exist
+   - Fix dependency version issues
+   - Build the application
+
+2. Start the production server on Windows:
+   ```
+   npm run start:win
+   ```
+
 ### Docker Deployment
 
 A Dockerfile is included for containerized deployment.
