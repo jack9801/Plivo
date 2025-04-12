@@ -25,8 +25,17 @@ export function middleware(request: NextRequest) {
     pathname === path || pathname.startsWith(`${path}/`)
   );
 
-  // Get auth cookie
-  const isAuthenticated = request.cookies.has('__clerk_db_jwt');
+  // Check for authentication cookie
+  const authCookie = request.cookies.get('__clerk_db_jwt');
+  const isAuthenticated = !!authCookie?.value;
+
+  // Log authentication status for debugging (only in development)
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`[Middleware] Path: ${pathname}`);
+    console.log(`[Middleware] Is public path: ${isPublicPath}`);
+    console.log(`[Middleware] Auth cookie present: ${!!authCookie}`);
+    console.log(`[Middleware] Is authenticated: ${isAuthenticated}`);
+  }
 
   // If path is public or user is authenticated, allow access
   if (isPublicPath || isAuthenticated) {
