@@ -1,132 +1,72 @@
-# Status Page
+# Status Page Application
 
-A modern, real-time status page application built with Next.js, Prisma, and ShadcnUI.
+A modern status page application for monitoring and reporting service status.
 
 ## Features
 
-- **User Authentication**: Secure login and registration system
-- **Multi-tenant**: Support for multiple organizations
-- **Team Management**: Invite and manage team members with different roles
-- **Service Management**: CRUD operations for services and status updates
-- **Incident Management**: Create, update, and resolve incidents
-- **Real-time Updates**: WebSocket connections for instant status changes
-- **Public Status Page**: Beautiful public-facing status page
-- **Modern UI**: Clean, minimalistic design using ShadcnUI
+- Create and manage multiple organizations
+- Track services and their status
+- Create incidents and post updates
+- Email notifications for subscribers
+- Team management and access control
 
-## Technologies
+## Deployment
 
-- Next.js 14
-- Prisma ORM
-- PostgreSQL
-- ShadcnUI (Radix UI + Tailwind CSS)
-- Socket.io for real-time updates
-- NextAuth.js for authentication
+### Deploying to Vercel
 
-## Setup
+1. Fork or clone this repository
+2. Create a Neon PostgreSQL database at [neon.tech](https://neon.tech)
+3. Deploy to Vercel
+4. Set the following environment variables in Vercel:
 
-### Prerequisites
+```
+# Database
+DATABASE_URL=postgres://user:password@hostname-pooler.region.aws.neon.tech/dbname?sslmode=require
 
-- Node.js 18+ and npm
-- PostgreSQL database
+# Authentication
+JWT_SECRET=your_secure_jwt_secret_key_here
 
-### Installation
+# Mailtrap email settings
+EMAIL_HOST=sandbox.smtp.mailtrap.io
+EMAIL_PORT=2525
+EMAIL_SECURE=false
+EMAIL_USER=your_mailtrap_user
+EMAIL_PASSWORD=your_mailtrap_password
+EMAIL_FROM="Status Page <notifications@example.com>"
 
-1. Clone the repository:
-   ```
-   git clone https://github.com/yourusername/status-page.git
-   cd status-page
-   ```
+# Application URL
+NEXT_PUBLIC_APP_URL=https://your-app-url.vercel.app
 
+# Disable demo mode
+DEMO_MODE=false
+```
+
+5. Trigger a new deployment
+
+### Local Development
+
+1. Clone the repository
 2. Install dependencies:
    ```
    npm install
    ```
-
-3. Set up environment variables:
-   - Copy `.env.example` to `.env`
-   - Update the `DATABASE_URL` to point to your PostgreSQL database
-
-4. Generate Prisma client and run migrations:
-   ```
-   npx prisma generate
-   npx prisma migrate dev
-   ```
-
-5. Start the development server:
+3. Create a `.env` file with the variables from `.env.example`
+4. Run the development server:
    ```
    npm run dev
    ```
 
-6. Open [http://localhost:3000](http://localhost:3000) in your browser to see the app.
+## Database Schema
 
-## Usage
-
-### Dashboard
-
-Access the admin dashboard at `/dashboard` to:
-- Create and manage services
-- Update service statuses
-- Report and manage incidents
-- Add team members
-- Configure organization settings
-
-### Public Status Page
-
-The public status page is available at the root URL `/` and shows:
-- Current status of all services
-- Active incidents
-- History of resolved incidents
-
-## Deployment
-
-### Preparing for Production
-
-1. Build the application:
-   ```
-   npm run build
-   ```
-
-2. Start the production server:
-   ```
-   npm start
-   ```
-
-### Windows-specific Deployment
-
-For Windows users, a build script is provided to simplify the deployment process:
-
-1. Run the build script:
-   ```
-   .\build.bat
-   ```
-   This script will:
-   - Check for Node.js and npm
-   - Create necessary configuration files
-   - Install dependencies
-   - Generate the Prisma client
-   - Create environment files if they don't exist
-   - Fix dependency version issues
-   - Build the application
-
-2. Start the production server on Windows:
-   ```
-   npm run start:win
-   ```
-
-### Docker Deployment
-
-A Dockerfile is included for containerized deployment.
-
-1. Build the Docker image:
-   ```
-   docker build -t status-page .
-   ```
-
-2. Run the container:
-   ```
-   docker run -p 3000:3000 status-page
-   ```
+The application uses Prisma with PostgreSQL. The schema includes models for:
+- User
+- Organization
+- Member
+- Service
+- Incident
+- Update
+- Subscription
 
 ## License
 
-MIT 
+MIT License 
