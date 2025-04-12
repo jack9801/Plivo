@@ -1,7 +1,7 @@
 {
   "version": 2,
   "buildCommand": "npm run build",
-  "installCommand": "npm install --legacy-peer-deps --force",
+  "installCommand": "node vercel-fix-deps.js && npm install --legacy-peer-deps --force",
   "framework": "nextjs",
   "outputDirectory": ".next",
   "env": {
