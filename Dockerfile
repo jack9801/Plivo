@@ -4,11 +4,7 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 
 # Copy package.json and package-lock.json to leverage Docker cache
-COPY package*.json ./
-
-# Create .npmrc file with necessary settings
-RUN echo "legacy-peer-deps=true" > .npmrc && \
-    echo "force=true" >> .npmrc
+COPY package*.json .npmrc ./
 
 # Install dependencies
 RUN npm install
