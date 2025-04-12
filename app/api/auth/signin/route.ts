@@ -6,12 +6,31 @@ import { createToken } from "@/lib/auth";
 
 export const dynamic = 'force-dynamic';
 
+// Demo user credentials - these will work even without a database connection
+const DEMO_USERS = [
+  {
+    id: 'demo-admin-id',
+    email: 'admin@example.com',
+    password: 'password123',
+    name: 'Admin User',
+    role: 'ADMIN'
+  },
+  {
+    id: 'demo-user-id',
+    email: 'user@example.com',
+    password: 'password123',
+    name: 'Demo User',
+    role: 'USER'
+  }
+];
+
 export async function POST(request: Request) {
   try {
     console.log("[Sign In] API called");
     
     // Check environment mode
     console.log(`[Sign In] Environment: ${process.env.NODE_ENV}`);
+    console.log(`[Sign In] App URL: ${process.env.NEXT_PUBLIC_APP_URL}`);
     
     // Safety check for request body
     let body;
@@ -31,6 +50,38 @@ export async function POST(request: Request) {
     const emailPrefix = email ? email.split('@')[0].substring(0, 3) + "***" : "undefined";
     console.log(`[Sign In] Attempt for email: ${emailPrefix}@...`);
 
+    // Check for demo users first
+    const demoUser = DEMO_USERS.find(u => u.email === email && u.password === password);
+    if (demoUser) {
+      console.log(`[Sign In] Demo user authenticated: ${emailPrefix}@...`);
+      
+      // Create token for demo user
+      const token = createToken({
+        userId: demoUser.id,
+        email: demoUser.email
+      });
+      
+      // Set auth cookie
+      cookies().set({
+        name: "__clerk_db_jwt",
+        value: token,
+        httpOnly: true,
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 60 * 60 * 24 * 7, // 1 week
+        sameSite: "lax"
+      });
+      
+      // Return user without password
+      const { password: _, ...userWithoutPassword } = demoUser;
+      
+      return NextResponse.json({
+        user: userWithoutPassword,
+        success: true,
+        demoMode: true
+      });
+    }
+
     // Check database connection with enhanced error info
     let dbConnectResult = false;
     let dbErrorMessage = "";
@@ -49,16 +100,13 @@ export async function POST(request: Request) {
       console.error("[Sign In] Database connection failed:", dbConnError);
       console.error(`[Sign In] Database error details: ${dbErrorMessage}`);
       
-      // Don't immediately return to allow for alternative auth in development
-      if (process.env.NODE_ENV === 'production') {
-        return NextResponse.json({ 
-          error: "Database connection failed. Please try again later.", 
-          details: dbErrorMessage,
-          success: false
-        }, { status: 503 });
-      } else {
-        console.log("[Sign In] Development mode - continuing despite DB error");
-      }
+      // If database connection fails, suggest using demo accounts
+      return NextResponse.json({ 
+        error: "Database connection failed. Please use demo account: admin@example.com / password123", 
+        details: dbErrorMessage,
+        demoMode: true,
+        success: false
+      }, { status: 503 });
     }
 
     // Validate required fields
@@ -68,44 +116,6 @@ export async function POST(request: Request) {
         { error: "Email and password are required", success: false },
         { status: 400 }
       );
-    }
-
-    // Development mode fallback user for testing without DB
-    if (process.env.NODE_ENV !== 'production' && email === 'admin@example.com' && password === 'password123') {
-      console.log("[Sign In] Using development fallback user");
-      
-      const devToken = createToken({
-        userId: 'dev-user-id',
-        email: 'admin@example.com',
-      });
-      
-      cookies().set({
-        name: "__clerk_db_jwt",
-        value: devToken,
-        httpOnly: true,
-        path: "/",
-        secure: false,
-        maxAge: 60 * 60 * 24 * 7, // 1 week
-        sameSite: "lax"
-      });
-      
-      return NextResponse.json({
-        user: {
-          id: 'dev-user-id',
-          email: 'admin@example.com',
-          name: 'Admin User',
-        },
-        success: true
-      });
-    }
-
-    // If we're in production and DB connection failed earlier, return an error
-    if (process.env.NODE_ENV === 'production' && !dbConnectResult) {
-      return NextResponse.json({ 
-        error: "Database connection error", 
-        details: dbErrorMessage,
-        success: false
-      }, { status: 503 });
     }
     
     // Find the user
@@ -184,14 +194,20 @@ export async function POST(request: Request) {
     } catch (userError) {
       console.error(`[Sign In] Database error for ${emailPrefix}@...`, userError);
       return NextResponse.json({ 
-        error: `Database operation failed`,
-        success: false
+        error: `Database operation failed. Try demo account: admin@example.com / password123`,
+        success: false,
+        demoMode: true
       }, { status: 500 });
     }
   } catch (error) {
     console.error("Error authenticating user:", error);
     return NextResponse.json(
-      { error: "Authentication failed", details: (error as Error).message, success: false },
+      { 
+        error: "Authentication failed. Try demo account: admin@example.com / password123", 
+        details: (error as Error).message, 
+        success: false,
+        demoMode: true 
+      },
       { status: 500 }
     );
   }

@@ -12,6 +12,7 @@ export default function SignInPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [debugInfo, setDebugInfo] = useState<string | null>(null);
+  const [showDemoHelp, setShowDemoHelp] = useState(false);
 
   const redirectUrl = searchParams.get("redirect_url") || "/dashboard";
 
@@ -23,6 +24,12 @@ export default function SignInPage() {
       setDebugInfo(`APP_URL: ${process.env.NEXT_PUBLIC_APP_URL}`);
     }
   }, []);
+
+  const handleDemoLogin = (demoEmail: string) => {
+    setEmail(demoEmail);
+    setPassword('password123');
+    setShowDemoHelp(false);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,6 +72,7 @@ export default function SignInPage() {
       } catch (fetchError) {
         console.error("Network error during fetch:", fetchError);
         setError("Network error. Please check your internet connection and try again.");
+        setShowDemoHelp(true);
         setIsLoading(false);
         return;
       }
@@ -76,6 +84,7 @@ export default function SignInPage() {
       } catch (textError) {
         console.error("Error getting response text:", textError);
         setError("Failed to read server response. Please try again later.");
+        setShowDemoHelp(true);
         setIsLoading(false);
         return;
       }
@@ -91,9 +100,15 @@ export default function SignInPage() {
       } catch (parseError) {
         console.error("Error parsing JSON response:", parseError);
         console.error("Raw response:", responseText);
-        setError("Server returned an invalid response. Please try again later.");
+        setError("Server returned an invalid response. Try using demo credentials.");
+        setShowDemoHelp(true);
         setIsLoading(false);
         return;
+      }
+
+      // If the API suggests using demo mode, show the demo help
+      if (data.demoMode === true) {
+        setShowDemoHelp(true);
       }
 
       // Handle unsuccessful responses
@@ -116,6 +131,7 @@ export default function SignInPage() {
     } catch (error: any) {
       console.error("Unhandled error during sign in:", error);
       setError(error?.message || "An unexpected error occurred. Please try again later.");
+      setShowDemoHelp(true);
       setIsLoading(false);
     }
   };
@@ -131,6 +147,26 @@ export default function SignInPage() {
         {error && (
           <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded">
             {error}
+          </div>
+        )}
+
+        {showDemoHelp && (
+          <div className="p-3 bg-yellow-100 border border-yellow-400 text-yellow-800 rounded">
+            <p className="font-medium mb-2">Use demo credentials:</p>
+            <div className="space-y-2">
+              <button 
+                onClick={() => handleDemoLogin('admin@example.com')}
+                className="w-full text-left px-3 py-2 bg-yellow-50 hover:bg-yellow-200 rounded"
+              >
+                👑 Admin user: admin@example.com / password123
+              </button>
+              <button 
+                onClick={() => handleDemoLogin('user@example.com')}
+                className="w-full text-left px-3 py-2 bg-yellow-50 hover:bg-yellow-200 rounded"
+              >
+                👤 Regular user: user@example.com / password123
+              </button>
+            </div>
           </div>
         )}
 
