@@ -5,16 +5,21 @@ import { sendEmail } from "@/lib/email";
 // GET /api/test-systems - Test various system components
 export async function GET(request: Request) {
   const results = {
-    tests: {},
+    tests: {
+      subscriptions: [] as any[]
+    },
     email: {
       success: true,
-      config: {}
+      config: {},
+      test: null as string | null,
+      error: null as string | null,
+      messageId: null as string | null
     },
     db: {
       connection: "Pending",
       success: true,
       counts: {},
-      error: null
+      error: null as string | null
     },
     endpoints: {}
   };
@@ -79,9 +84,9 @@ export async function GET(request: Request) {
         results.email.test = emailResult.success ? "Success" : "Failed";
         if (!emailResult.success) {
           results.email.success = false;
-          results.email.error = emailResult.error instanceof Error ? emailResult.error.message : emailResult.error;
+          results.email.error = emailResult.error instanceof Error ? emailResult.error.message : emailResult.error as string;
         } else {
-          results.email.messageId = emailResult.messageId;
+          results.email.messageId = emailResult.messageId as string;
         }
       } catch (emailError) {
         results.email.success = false;
