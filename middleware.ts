@@ -19,24 +19,10 @@ const publicPaths = [
   '/api/subscriptions',
 ];
 
-// Simple check for demo user - we just need to know if the token exists
-// This avoids using crypto which isn't available in Edge Runtime
-const isDemoUser = (token: string | undefined): boolean => {
+// Check for authentication token
+const isAuthenticated = (token: string | undefined): boolean => {
   if (!token) return false;
-  
-  try {
-    // In demo mode, any token is accepted
-    if (process.env.DEMO_MODE === 'true') {
-      console.log('Demo mode is active in isDemoUser check');
-      return true;
-    }
-    
-    // Simple check - if token exists and we're in demo mode
-    return token.length > 0;
-  } catch (error) {
-    console.error('Error checking demo user:', error);
-    return false;
-  }
+  return token.length > 0;
 };
 
 // Use Edge runtime for better performance
@@ -44,11 +30,6 @@ export const runtime = 'experimental-edge';
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  
-  // For Vercel, use demo mode as a fallback if real auth fails
-  // But don't force it to always be in demo mode
-  const useDemoFallback = true; 
-  const isDemoModeActive = process.env.DEMO_MODE === 'true';
   
   // Additional path checks for static assets and API routes
   if (
@@ -72,16 +53,9 @@ export function middleware(request: NextRequest) {
 
   // Check for authentication cookie
   const authCookie = request.cookies.get('__clerk_db_jwt');
-  const isAuthenticated = !!authCookie?.value;
-
+  
   // If authenticated with a real token, allow access
-  if (isAuthenticated) {
-    return NextResponse.next();
-  }
-
-  // If demo mode is active as fallback, allow access as a last resort
-  if (isDemoModeActive && useDemoFallback) {
-    console.log('Demo mode is active as fallback, bypassing authentication');
+  if (isAuthenticated(authCookie?.value)) {
     return NextResponse.next();
   }
 

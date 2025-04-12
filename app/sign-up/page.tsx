@@ -9,9 +9,11 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import Link from "next/link";
 
-export default function SignInPage() {
+export default function SignUpPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [organizationName, setOrganizationName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
@@ -20,22 +22,34 @@ export default function SignInPage() {
     e.preventDefault();
     setIsLoading(true);
 
+    // Validate passwords match
+    if (password !== confirmPassword) {
+      toast({
+        title: "Passwords don't match",
+        description: "Please make sure both passwords match",
+        variant: "destructive"
+      });
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      // Perform real authentication with the database
-      const response = await fetch('/api/auth/login', {
+      // Register user with the API
+      const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           email,
-          password
+          password,
+          organizationName: organizationName || undefined
         })
       });
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Login failed');
+        throw new Error(errorData.error || 'Registration failed');
       }
       
       const data = await response.json();
@@ -44,17 +58,17 @@ export default function SignInPage() {
       localStorage.setItem('auth_token', data.token);
       
       toast({
-        title: "Login Successful",
-        description: "Welcome to your account!"
+        title: "Registration Successful",
+        description: "Your account has been created successfully"
       });
       
       // Redirect to dashboard
       router.push('/dashboard');
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('Registration error:', error);
       toast({
-        title: "Login Failed",
-        description: (error instanceof Error) ? error.message : "Invalid email or password",
+        title: "Registration Failed",
+        description: (error instanceof Error) ? error.message : "Could not create your account",
         variant: "destructive"
       });
     } finally {
@@ -66,9 +80,9 @@ export default function SignInPage() {
     <div className="flex h-screen items-center justify-center bg-gray-50">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-2xl text-center">Sign In</CardTitle>
+          <CardTitle className="text-2xl text-center">Create Account</CardTitle>
           <CardDescription className="text-center">
-            Enter your credentials to access your account
+            Sign up to get started with Status Page
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -85,15 +99,7 @@ export default function SignInPage() {
               />
             </div>
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
-                <Link
-                  href="/forgot-password"
-                  className="text-sm text-blue-600 hover:text-blue-800"
-                >
-                  Forgot password?
-                </Link>
-              </div>
+              <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
                 type="password"
@@ -102,19 +108,38 @@ export default function SignInPage() {
                 required
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="organizationName">Organization Name (Optional)</Label>
+              <Input
+                id="organizationName"
+                placeholder="Your Company Name"
+                value={organizationName}
+                onChange={(e) => setOrganizationName(e.target.value)}
+              />
+            </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Signing in..." : "Sign In"}
+              {isLoading ? "Creating Account..." : "Sign Up"}
             </Button>
           </form>
         </CardContent>
         <CardFooter className="flex flex-col space-y-4">
           <div className="text-center text-sm">
-            Don't have an account?{" "}
+            Already have an account?{" "}
             <Link
-              href="/sign-up"
+              href="/sign-in"
               className="text-blue-600 hover:text-blue-800 font-medium"
             >
-              Sign up
+              Sign in
             </Link>
           </div>
         </CardFooter>

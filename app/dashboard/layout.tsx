@@ -20,16 +20,11 @@ export default function DashboardLayout({
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [activePath, setActivePath] = useState("");
-  const [isDemoMode, setIsDemoMode] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   useEffect(() => {
     // Set active path
     setActivePath(window.location.pathname);
-    
-    // Check for Vercel deployment (demo mode)
-    const isVercel = window.location.hostname.includes('vercel.app');
-    setIsDemoMode(isVercel);
     
     // Authentication check
     const checkAuth = async () => {
@@ -61,20 +56,7 @@ export default function DashboardLayout({
           return;
         }
         
-        // If we're in demo mode on Vercel, allow access with demo user
-        if (isVercel) {
-          console.log("Vercel environment detected, using demo mode");
-          setCurrentUser({
-            id: 'demo-admin-id',
-            email: 'admin@example.com',
-            organizationId: 'demo-admin-org'
-          });
-          setIsAuthenticated(true);
-          setIsLoading(false);
-          return;
-        }
-        
-        // No cookie and not in demo mode, redirect to sign-in
+        // No cookie, redirect to sign-in
         router.push("/sign-in?redirect_url=" + encodeURIComponent(window.location.href));
       } catch (error) {
         console.error("Error checking authentication:", error);
@@ -100,9 +82,8 @@ export default function DashboardLayout({
   }
 
   // Get organization info to display
-  const orgId = currentUser?.organizationId || 'demo-admin-org';
-  const isDemoOrg = orgId.startsWith('demo-');
-  const orgName = isDemoOrg ? (orgId === 'demo-admin-org' ? 'Admin Demo Org' : 'User Demo Org') : 'Your Organization';
+  const orgId = currentUser?.organizationId || '';
+  const orgName = orgId.startsWith('demo-') ? (orgId === 'demo-admin-org' ? 'Admin Demo Org' : 'User Demo Org') : 'Your Organization';
 
   return (
     <div className="flex h-screen">
@@ -111,9 +92,6 @@ export default function DashboardLayout({
         <div>
           <div className="p-4 mt-2">
             <h2 className="text-xl font-bold">Status Page</h2>
-            {isDemoMode && (
-              <span className="text-xs font-medium text-yellow-400">Demo Mode</span>
-            )}
             <div className="mt-1 text-xs text-gray-400">
               {currentUser?.email || 'Anonymous User'} 
               <span className="block">{orgName}</span>

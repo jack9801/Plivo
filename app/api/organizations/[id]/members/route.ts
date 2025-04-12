@@ -34,7 +34,7 @@ export async function POST(
   try {
     const { id } = params;
     const body = await request.json();
-    const { userId, role, email, name } = body;
+    const { userId, role } = body;
 
     // Validate required fields
     if (!userId) {
@@ -44,29 +44,6 @@ export async function POST(
       );
     }
     
-    // Derive email and name from userId if not provided
-    const userEmail = email || `${userId}@example.com`;
-    const userName = name || userId;
-    
-    // Check if this is a demo organization
-    const isDemoOrg = id.startsWith('demo-') || process.env.DEMO_MODE === 'true';
-    
-    // Handle demo mode
-    if (isDemoOrg) {
-      console.log(`Demo member creation requested for org: ${id}, user: ${userId}`);
-      return NextResponse.json({
-        id: `demo-member-${Date.now()}`,
-        organizationId: id,
-        userId,
-        role: role || "MEMBER",
-        email: userEmail,
-        name: userName,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        demoMode: true
-      }, { status: 201 });
-    }
-
     // Check if member already exists
     const existingMember = await prisma.member.findUnique({
       where: {
@@ -89,9 +66,7 @@ export async function POST(
       data: {
         organizationId: id,
         userId,
-        role: role || "MEMBER",
-        email: userEmail,
-        name: userName
+        role: role || "MEMBER"
       }
     });
 
