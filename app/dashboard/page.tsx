@@ -3,17 +3,134 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
+interface User {
+  id: string;
+  email: string;
+  organizationId?: string;
+}
+
+interface Service {
+  id: string;
+  name: string;
+  status: string;
+}
+
+interface Incident {
+  id: string;
+  title: string;
+  status: string;
+  createdAt: string;
+}
+
 export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
-  const [demoMode, setDemoMode] = useState(true);
+  const [demoMode, setDemoMode] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [services, setServices] = useState<Service[]>([]);
+  const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [activeIncidents, setActiveIncidents] = useState<Incident[]>([]);
+  const [organization, setOrganization] = useState({ name: 'Loading...' });
   
   useEffect(() => {
-    // Simulate loading and then show the dashboard
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
+    // Check environment
+    const isVercel = window.location.hostname.includes('vercel.app');
+    setDemoMode(isVercel);
     
-    return () => clearTimeout(timer);
+    const fetchUserAndData = async () => {
+      try {
+        // Try to get current user
+        let orgId = '';
+        
+        try {
+          const userResponse = await fetch('/api/auth/me');
+          if (userResponse.ok) {
+            const userData = await userResponse.json();
+            if (userData.user) {
+              setCurrentUser(userData.user);
+              orgId = userData.user.organizationId || '';
+              
+              // If user doesn't have org ID but we're in demo mode, use demo org
+              if (!orgId && isVercel) {
+                orgId = 'demo-admin-org';
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching user:', error);
+          if (isVercel) {
+            // If error in Vercel, use demo organization
+            orgId = 'demo-admin-org';
+          }
+        }
+        
+        // If we still don't have an org ID, try to get it from the organization API
+        if (!orgId) {
+          try {
+            const orgsResponse = await fetch('/api/organizations');
+            if (orgsResponse.ok) {
+              const orgs = await orgsResponse.json();
+              if (orgs && orgs.length > 0) {
+                orgId = orgs[0].id;
+                setOrganization({ name: orgs[0].name });
+              }
+            }
+          } catch (error) {
+            console.error('Error fetching organizations:', error);
+          }
+        }
+        
+        // If we have an organization ID, fetch services and incidents
+        if (orgId) {
+          console.log('Fetching data for organization:', orgId);
+          
+          // Fetch organization details
+          try {
+            const orgResponse = await fetch(`/api/organizations/${orgId}`);
+            if (orgResponse.ok) {
+              const org = await orgResponse.json();
+              setOrganization(org);
+            }
+          } catch (error) {
+            console.error('Error fetching organization details:', error);
+          }
+          
+          // Fetch services
+          try {
+            const servicesResponse = await fetch(`/api/services?organizationId=${orgId}`);
+            if (servicesResponse.ok) {
+              const servicesData = await servicesResponse.json();
+              setServices(servicesData);
+            }
+          } catch (error) {
+            console.error('Error fetching services:', error);
+          }
+          
+          // Fetch incidents
+          try {
+            const incidentsResponse = await fetch(`/api/incidents?organizationId=${orgId}`);
+            if (incidentsResponse.ok) {
+              const incidentsData = await incidentsResponse.json();
+              setIncidents(incidentsData);
+              
+              // Filter active incidents
+              const active = incidentsData.filter((incident: any) => 
+                incident.status !== 'RESOLVED' && incident.status !== 'COMPLETED'
+              );
+              setActiveIncidents(active);
+            }
+          } catch (error) {
+            console.error('Error fetching incidents:', error);
+          }
+        }
+        
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+        setIsLoading(false);
+      }
+    };
+    
+    fetchUserAndData();
   }, []);
   
   if (isLoading) {
@@ -27,6 +144,9 @@ export default function DashboardPage() {
     );
   }
   
+  // Count operational services
+  const operationalServices = services.filter(service => service.status === 'OPERATIONAL').length;
+  
   return (
     <div className="p-6 max-w-7xl mx-auto">
       {demoMode && (
@@ -37,13 +157,17 @@ export default function DashboardPage() {
         </div>
       )}
       
-      <h1 className="text-3xl font-bold mb-6">Dashboard Overview</h1>
+      <h1 className="text-3xl font-bold mb-6">{organization.name || 'Dashboard'} Overview</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white p-6 rounded-lg shadow-md">
           <h2 className="text-xl font-semibold mb-2">Services</h2>
-          <div className="text-4xl font-bold text-primary">5</div>
-          <p className="text-gray-500 mt-2">All services operational</p>
+          <div className="text-4xl font-bold text-primary">{services.length}</div>
+          <p className="text-gray-500 mt-2">
+            {operationalServices === services.length 
+              ? 'All services operational' 
+              : `${operationalServices}/${services.length} operational`}
+          </p>
           <Link href="/dashboard/services" className="text-primary hover:underline mt-4 inline-block">
             Manage Services →
           </Link>
@@ -51,39 +175,53 @@ export default function DashboardPage() {
         
         <div className="bg-white p-6 rounded-lg shadow-md">
           <h2 className="text-xl font-semibold mb-2">Incidents</h2>
-          <div className="text-4xl font-bold text-yellow-500">1</div>
-          <p className="text-gray-500 mt-2">Active incident</p>
+          <div className={`text-4xl font-bold ${activeIncidents.length > 0 ? 'text-yellow-500' : 'text-green-500'}`}>
+            {activeIncidents.length}
+          </div>
+          <p className="text-gray-500 mt-2">
+            {activeIncidents.length === 0 
+              ? 'No active incidents' 
+              : activeIncidents.length === 1 
+                ? '1 active incident' 
+                : `${activeIncidents.length} active incidents`}
+          </p>
           <Link href="/dashboard/incidents" className="text-primary hover:underline mt-4 inline-block">
             View Incidents →
           </Link>
         </div>
         
         <div className="bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-xl font-semibold mb-2">Team</h2>
-          <div className="text-4xl font-bold text-primary">3</div>
-          <p className="text-gray-500 mt-2">Team members</p>
-          <Link href="/dashboard/team" className="text-primary hover:underline mt-4 inline-block">
-            Manage Team →
+          <h2 className="text-xl font-semibold mb-2">Organization</h2>
+          <div className="text-4xl font-bold text-primary">{organization.name?.charAt(0) || '?'}</div>
+          <p className="text-gray-500 mt-2">{organization.name || 'Your Organization'}</p>
+          <Link href="/dashboard/organizations" className="text-primary hover:underline mt-4 inline-block">
+            Manage Organization →
           </Link>
         </div>
       </div>
       
       <div className="bg-white p-6 rounded-lg shadow-md mb-8">
         <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
-        <ul className="divide-y">
-          <li className="py-3">
-            <span className="text-gray-500 mr-2">Today at 10:23 AM</span>
-            <span className="font-medium">API Service</span> - Degraded performance reported
-          </li>
-          <li className="py-3">
-            <span className="text-gray-500 mr-2">Yesterday at 2:45 PM</span>
-            <span className="font-medium">Website</span> - Scheduled maintenance completed
-          </li>
-          <li className="py-3">
-            <span className="text-gray-500 mr-2">May 15, 2023</span>
-            <span className="font-medium">Database</span> - Performance optimizations applied
-          </li>
-        </ul>
+        {incidents.length > 0 ? (
+          <ul className="divide-y">
+            {incidents.slice(0, 3).map(incident => (
+              <li key={incident.id} className="py-3">
+                <span className="text-gray-500 mr-2">
+                  {new Date(incident.createdAt).toLocaleString()}
+                </span>
+                <span className="font-medium">{incident.title}</span>
+                <span className={`ml-2 px-2 py-1 text-xs rounded-full 
+                  ${incident.status === 'RESOLVED' ? 'bg-green-100 text-green-800' : 
+                    incident.status === 'INVESTIGATING' ? 'bg-yellow-100 text-yellow-800' : 
+                    'bg-red-100 text-red-800'}`}>
+                  {incident.status}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-gray-500">No incidents reported yet.</p>
+        )}
       </div>
       
       <div className="bg-white p-6 rounded-lg shadow-md">

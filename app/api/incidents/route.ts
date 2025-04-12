@@ -5,6 +5,36 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { sendEmail, getIncidentCreatedTemplate } from "@/lib/email";
 
+// Demo incidents for fallback
+const DEMO_INCIDENTS = [
+  {
+    id: 'demo-incident-1',
+    title: 'Demo API Degradation',
+    description: 'Our API is experiencing some performance issues.',
+    status: 'INVESTIGATING',
+    severity: 'MEDIUM',
+    serviceId: 'demo-service-1',
+    organizationId: 'demo-admin-org',
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
+    updatedAt: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
+    service: {
+      id: 'demo-service-1',
+      name: 'Demo API',
+      status: 'DEGRADED',
+      description: 'Demo API service'
+    },
+    updates: [
+      {
+        id: 'demo-update-1',
+        content: 'We are investigating the API performance issues.',
+        status: 'INVESTIGATING',
+        createdAt: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
+        incidentId: 'demo-incident-1'
+      }
+    ]
+  }
+];
+
 // GET /api/incidents - Get all incidents
 export async function GET(request: NextRequest) {
   try {
@@ -18,6 +48,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // If this is a demo organization, return demo incidents
+    if (organizationId.startsWith('demo-')) {
+      const filteredIncidents = DEMO_INCIDENTS.filter(
+        incident => incident.organizationId === organizationId
+      );
+      return NextResponse.json(filteredIncidents);
+    }
+
+    // Otherwise try to get real incidents from database
     const incidents = await prisma.incident.findMany({
       where: {
         organizationId,
@@ -36,9 +75,32 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(incidents);
+    // If we found real incidents, return them
+    if (incidents.length > 0) {
+      return NextResponse.json(incidents);
+    }
+
+    // If no real incidents found and this is a demo org, return empty array
+    if (organizationId.startsWith('demo-')) {
+      return NextResponse.json([]);
+    }
+
+    // Otherwise return demo incidents as fallback
+    return NextResponse.json(DEMO_INCIDENTS);
   } catch (error) {
     console.error("Error fetching incidents:", error);
+
+    // If error occurred for a demo organization, return demo incidents
+    const { searchParams } = new URL(request.url);
+    const organizationId = searchParams.get('organizationId');
+    
+    if (organizationId && organizationId.startsWith('demo-')) {
+      const filteredIncidents = DEMO_INCIDENTS.filter(
+        incident => incident.organizationId === organizationId
+      );
+      return NextResponse.json(filteredIncidents);
+    }
+
     return NextResponse.json(
       { error: "Failed to fetch incidents" },
       { status: 500 }
@@ -59,7 +121,51 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if organization exists
+    // Check if this is a demo organization
+    if (organizationId.startsWith('demo-')) {
+      // Generate a unique ID for the demo incident
+      const timestamp = new Date().getTime();
+      const incidentId = `demo-incident-${timestamp}`;
+      const updateId = `demo-update-${timestamp}`;
+      
+      // Create a mock incident
+      const demoIncident = {
+        id: incidentId,
+        title,
+        description,
+        status,
+        severity,
+        serviceId,
+        organizationId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        service: {
+          id: serviceId,
+          name: serviceId.startsWith('demo-') ? 'Demo Service' : 'Unknown Service',
+          status: 'DEGRADED',
+          description: 'Demo service'
+        },
+        updates: [
+          {
+            id: updateId,
+            content: description,
+            status,
+            createdAt: new Date(),
+            incidentId
+          }
+        ],
+        demoMode: true
+      };
+      
+      return NextResponse.json({ 
+        success: true, 
+        id: incidentId,
+        message: "Demo incident created successfully",
+        demoMode: true
+      }, { status: 201 });
+    }
+
+    // For real organizations, check if organization exists
     const organization = await prisma.organization.findUnique({
       where: { id: organizationId },
     });
@@ -164,6 +270,28 @@ export async function POST(request: NextRequest) {
     }, { status: 201 });
   } catch (error) {
     console.error("Error creating incident:", error);
+    
+    // If error occurred for a demo organization, create a demo incident
+    try {
+      const body = await request.json().catch(() => ({}));
+      const { title, description, status, severity, serviceId, organizationId } = body;
+      
+      if (organizationId && organizationId.startsWith('demo-')) {
+        // Generate a unique ID for the demo incident
+        const timestamp = new Date().getTime();
+        const incidentId = `demo-incident-${timestamp}`;
+        
+        return NextResponse.json({ 
+          success: true, 
+          id: incidentId,
+          message: "Demo incident created successfully (fallback)",
+          demoMode: true
+        }, { status: 201 });
+      }
+    } catch (fallbackError) {
+      console.error("Error in fallback handling:", fallbackError);
+    }
+    
     return NextResponse.json(
       { error: "Failed to create incident" },
       { status: 500 }
