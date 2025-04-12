@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { useRouter } from "next/navigation"; // Changed from next/router to next/navigation
+import { useRouter } from "next/router";
 import { signIn } from "next-auth/react";
 
 const LoginForm: React.FC = () => {
@@ -20,18 +20,11 @@ const LoginForm: React.FC = () => {
     const password = formData.get("password") as string;
 
     try {
-      const result = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
-        callbackUrl: "/dashboard"
-      });
-
+      const result = await signIn("credentials", { email, password });
       if (result?.error) {
         setError("Invalid email or password");
       } else {
-        // Use the callback URL from result if available, otherwise fallback to "/dashboard"
-        router.push(result?.url || "/dashboard");
+        router.push("/dashboard");
       }
     } catch (error) {
       setError("An error occurred. Please try again.");
@@ -67,9 +60,9 @@ const LoginForm: React.FC = () => {
       {error && <p>{error}</p>}
       <button type="submit" disabled={isLoading}>
         {isLoading ? "Loading..." : "Login"}
-    </form>ton>
-  );</form>
-};);
+      </button>
+    </form>
+  );
 };
-export default LoginForm;
+
 export default LoginForm;
