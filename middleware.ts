@@ -40,7 +40,7 @@ const isDemoUser = (token: string | undefined): boolean => {
 };
 
 // Use Edge runtime for better performance
-export const runtime = 'edge';
+export const runtime = 'experimental-edge';
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
