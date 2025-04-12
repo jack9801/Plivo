@@ -51,8 +51,8 @@ export default function SignInPage() {
         description: "Welcome to your account!"
       });
       
-      // Redirect to dashboard
-      router.push('/dashboard');
+      // Force reload to dashboard instead of client-side navigation
+      window.location.href = '/dashboard';
     } catch (error) {
       console.error('Login error:', error);
       toast({

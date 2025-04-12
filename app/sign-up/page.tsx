@@ -65,8 +65,8 @@ export default function SignUpPage() {
         description: "Your account has been created successfully"
       });
       
-      // Redirect to dashboard
-      router.push('/dashboard');
+      // Force reload to dashboard instead of client-side navigation
+      window.location.href = '/dashboard';
     } catch (error) {
       console.error('Registration error:', error);
       toast({

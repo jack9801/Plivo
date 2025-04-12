@@ -56,6 +56,9 @@ export default function DashboardLayout({
               // If token is invalid, remove it
               console.error('Token validation failed, removing token');
               localStorage.removeItem('auth_token');
+              // Force a hard redirect to sign-in
+              window.location.href = "/sign-in?redirect_url=" + encodeURIComponent(window.location.href);
+              return;
             }
           } catch (error) {
             console.error('Error fetching user data:', error);
@@ -64,17 +67,17 @@ export default function DashboardLayout({
         }
         
         // No valid token, redirect to sign-in
-        router.push("/sign-in?redirect_url=" + encodeURIComponent(window.location.href));
+        window.location.href = "/sign-in?redirect_url=" + encodeURIComponent(window.location.href);
       } catch (error) {
         console.error("Error checking authentication:", error);
         setIsAuthenticated(false);
         setIsLoading(false);
-        router.push("/sign-in?redirect_url=" + encodeURIComponent(window.location.href));
+        window.location.href = "/sign-in?redirect_url=" + encodeURIComponent(window.location.href);
       }
     };
     
     checkAuth();
-  }, [router]);
+  }, []);  // Remove router from dependencies to avoid re-running
 
   if (isLoading) {
     return (
@@ -177,7 +180,8 @@ export default function DashboardLayout({
               // Delete auth cookie and localStorage
               document.cookie = "__clerk_db_jwt=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
               localStorage.removeItem('auth_token');
-              router.push("/sign-in");
+              // Force a hard redirect
+              window.location.href = "/sign-in";
             }}
             className="flex items-center gap-3 p-3 rounded hover:bg-[#2E2E2E] w-full text-left"
           >
