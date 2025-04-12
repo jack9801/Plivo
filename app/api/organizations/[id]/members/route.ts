@@ -34,7 +34,7 @@ export async function POST(
   try {
     const { id } = params;
     const body = await request.json();
-    const { userId, role } = body;
+    const { userId, role, email, name } = body;
 
     // Validate required fields
     if (!userId) {
@@ -42,6 +42,25 @@ export async function POST(
         { error: "Missing required fields" },
         { status: 400 }
       );
+    }
+    
+    // Check if this is a demo organization
+    const isDemoOrg = id.startsWith('demo-') || process.env.DEMO_MODE === 'true';
+    
+    // Handle demo mode
+    if (isDemoOrg) {
+      console.log(`Demo member creation requested for org: ${id}, user: ${userId}`);
+      return NextResponse.json({
+        id: `demo-member-${Date.now()}`,
+        organizationId: id,
+        userId,
+        role: role || "MEMBER",
+        email: email || `${userId}@example.com`,
+        name: name || userId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        demoMode: true
+      }, { status: 201 });
     }
 
     // Check if member already exists
@@ -66,7 +85,9 @@ export async function POST(
       data: {
         organizationId: id,
         userId,
-        role: role || "MEMBER"
+        role: role || "MEMBER",
+        email: email || `${userId}@example.com`,
+        name: name || userId
       }
     });
 

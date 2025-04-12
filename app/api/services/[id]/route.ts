@@ -89,10 +89,25 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Check if the service exists
+    const serviceId = params.id;
+    
+    // Check if this is a demo service
+    const isDemoService = serviceId.startsWith('demo-') || process.env.DEMO_MODE === 'true';
+    
+    // If it's a demo service, just return success
+    if (isDemoService) {
+      console.log(`Demo service deletion requested for ID: ${serviceId}`);
+      return NextResponse.json({ 
+        success: true,
+        message: "Demo service deleted successfully",
+        demoMode: true
+      });
+    }
+    
+    // For real services, check if the service exists
     const existingService = await prisma.service.findUnique({
       where: {
-        id: params.id,
+        id: serviceId,
       },
     });
 
@@ -106,7 +121,7 @@ export async function DELETE(
     // Check if there are any incidents associated with this service
     const incidents = await prisma.incident.findMany({
       where: {
-        serviceId: params.id,
+        serviceId: serviceId,
       },
     });
 
@@ -120,7 +135,7 @@ export async function DELETE(
     // Delete the service
     await prisma.service.delete({
       where: {
-        id: params.id,
+        id: serviceId,
       },
     });
 
