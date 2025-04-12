@@ -23,15 +23,19 @@ const isStaticGeneration =
   (process.env.VERCEL && process.env.NEXT_PUBLIC_VERCEL_ENV === 'production') ||
   process.env.NODE_ENV === 'production' && (process.env.VERCEL_ENV || isVercelBuild);
 
-// Connection options with retry logic for production
-const connectionOptions = process.env.NODE_ENV === 'production' ? {
+// Use a consistent type for both configurations
+const prodConfig: Prisma.PrismaClientOptions = {
   log: ['error'] as Prisma.LogLevel[],
   errorFormat: 'minimal' as Prisma.ErrorFormat,
-  // Note: connectionLimit and pool are not valid PrismaClient options
-  // They've been removed as they're not supported
-} : {
-  log: (process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error']) as Prisma.LogLevel[],
 };
+
+const devConfig: Prisma.PrismaClientOptions = {
+  log: (process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error']) as Prisma.LogLevel[],
+  errorFormat: 'pretty' as Prisma.ErrorFormat, // Add errorFormat for dev too
+};
+
+// Connection options with proper typing
+const connectionOptions = process.env.NODE_ENV === 'production' ? prodConfig : devConfig;
 
 // Create a mock client or real client based on environment
 const createPrismaClient = () => {
