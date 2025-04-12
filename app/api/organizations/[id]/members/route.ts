@@ -34,7 +34,7 @@ export async function POST(
   try {
     const { id } = params;
     const body = await request.json();
-    const { userId, role } = body;
+    const { userId, role, email, name } = body;
 
     // Validate required fields
     if (!userId) {
@@ -43,6 +43,10 @@ export async function POST(
         { status: 400 }
       );
     }
+    
+    // Derive email and name from userId if not provided
+    const userEmail = email || `${userId}@example.com`;
+    const userName = name || userId;
     
     // Check if this is a demo organization
     const isDemoOrg = id.startsWith('demo-') || process.env.DEMO_MODE === 'true';
@@ -55,6 +59,8 @@ export async function POST(
         organizationId: id,
         userId,
         role: role || "MEMBER",
+        email: userEmail,
+        name: userName,
         createdAt: new Date(),
         updatedAt: new Date(),
         demoMode: true
@@ -83,7 +89,9 @@ export async function POST(
       data: {
         organizationId: id,
         userId,
-        role: role || "MEMBER"
+        role: role || "MEMBER",
+        email: userEmail,
+        name: userName
       }
     });
 
