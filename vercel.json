@@ -1,9 +1,18 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
+  "buildCommand": "npm run vercel-build",
   "installCommand": "npm install --legacy-peer-deps --force",
   "framework": "nextjs",
   "env": {
     "NEXT_PUBLIC_APP_URL": "$VERCEL_URL"
+  },
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/node"
+    }
+  ],
+  "buildOptions": {
+    "zeroConfig": true
   }
 } 
