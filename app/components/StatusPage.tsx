@@ -83,8 +83,10 @@ const ServiceStatusCard: React.FC<{
           <select
             value={service.status}
             onChange={(e) => {
-              const newStatus = e.target.value as ServiceStatusType;
-              onUpdate({ ...service, status: newStatus });
+              const newStatus = e.target.value;
+              if (newStatus === 'OPERATIONAL' || newStatus === 'DEGRADED' || newStatus === 'OUTAGE') {
+                onUpdate({ ...service, status: newStatus });
+              }
             }}
             className={`px-3 py-1 rounded-md text-sm font-medium ${
               service.status === 'OPERATIONAL' ? 'bg-green-100 text-green-800' :
@@ -167,8 +169,10 @@ const AddServiceForm: React.FC<{
           <select
             value={formData.status}
             onChange={(e) => {
-              const newStatus = e.target.value as ServiceStatusType;
-              setFormData({ ...formData, status: newStatus });
+              const newStatus = e.target.value;
+              if (newStatus === 'OPERATIONAL' || newStatus === 'DEGRADED' || newStatus === 'OUTAGE') {
+                setFormData({ ...formData, status: newStatus });
+              }
             }}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           >

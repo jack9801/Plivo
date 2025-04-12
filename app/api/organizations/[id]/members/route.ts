@@ -34,7 +34,7 @@ export async function POST(
   try {
     const { id } = params;
     const body = await request.json();
-    const { userId, role, email, name } = body;
+    const { userId, role } = body;
 
     // Validate required fields
     if (!userId) {
@@ -55,8 +55,6 @@ export async function POST(
         organizationId: id,
         userId,
         role: role || "MEMBER",
-        email: email || `${userId}@example.com`,
-        name: name || userId,
         createdAt: new Date(),
         updatedAt: new Date(),
         demoMode: true
@@ -85,9 +83,7 @@ export async function POST(
       data: {
         organizationId: id,
         userId,
-        role: role || "MEMBER",
-        email: email || `${userId}@example.com`,
-        name: name || userId
+        role: role || "MEMBER"
       }
     });
 

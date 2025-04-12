@@ -22,9 +22,9 @@ model Organization {
   slug          String         @unique
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
-  services      Service[]
   incidents     Incident[]
   members       Member[]
+  services      Service[]
   subscriptions Subscription[]
 }
 
@@ -35,6 +35,8 @@ model Member {
   role           String       @default("MEMBER")
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+  email          String
+  name           String
   organization   Organization @relation(fields: [organizationId], references: [id])
 
   @@unique([organizationId, userId])
@@ -49,8 +51,8 @@ model Service {
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   incidents      Incident[]
-  metrics        ServiceMetric[]
   organization   Organization    @relation(fields: [organizationId], references: [id])
+  metrics        ServiceMetric[]
 
   @@index([status])
 }
@@ -88,7 +90,7 @@ model Subscription {
   id             String       @id @default(cuid())
   email          String
   organizationId String
-  token          String       @unique // For unsubscribe verification
+  token          String       @unique
   confirmed      Boolean      @default(false)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
@@ -100,11 +102,11 @@ model Subscription {
 }
 
 model ServiceMetric {
-  id             String       @id @default(cuid())
-  serviceId      String
-  status         String
-  timestamp      DateTime     @default(now())
-  service        Service      @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  id        String   @id @default(cuid())
+  serviceId String
+  status    String
+  timestamp DateTime @default(now())
+  service   Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
   @@index([serviceId])
   @@index([timestamp])

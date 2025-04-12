@@ -1,6 +1,7 @@
 {
-  "/sign-in/[[...sign-in]]/page": "app/sign-in/[[...sign-in]]/page.js",
-  "/sign-up/[[...sign-up]]/page": "app/sign-up/[[...sign-up]]/page.js",
-  "/dashboard/page": "app/dashboard/page.js",
-  "/dashboard/services/page": "app/dashboard/services/page.js"
+  "/dashboard/organizations/[id]/services/new/page": "app/dashboard/organizations/[id]/services/new/page.js",
+  "/dashboard/organizations/[id]/members/new/page": "app/dashboard/organizations/[id]/members/new/page.js",
+  "/dashboard/incidents/page": "app/dashboard/incidents/page.js",
+  "/dashboard/incidents/[id]/page": "app/dashboard/incidents/[id]/page.js",
+  "/dashboard/incidents/new/page": "app/dashboard/incidents/new/page.js"
 }
