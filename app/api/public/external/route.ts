@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma, withDatabase } from "@/lib/db";
 
+// Mark this route as dynamic to prevent static rendering
+export const dynamic = 'force-dynamic';
+
 // GET /api/public/external - Get minimal status data for external integrations
 export async function GET(request: Request) {
   try {

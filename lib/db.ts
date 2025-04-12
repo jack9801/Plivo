@@ -4,11 +4,24 @@ declare global {
   var prisma: PrismaClient | undefined;
 }
 
+// Check for .vercel-build marker file which indicates we're in a Vercel build
+const isVercelBuild = (() => {
+  try {
+    // During build time, we've created a marker file
+    if (typeof process !== 'undefined' && process.env.VERCEL === '1') {
+      return true;
+    }
+    return false;
+  } catch (e) {
+    return false;
+  }
+})();
+
 // Determine if we are in a static generation context (during build time)
 const isStaticGeneration = 
   process.env.NEXT_PHASE === 'phase-production-build' || 
   (process.env.VERCEL && process.env.NEXT_PUBLIC_VERCEL_ENV === 'production') ||
-  process.env.NODE_ENV === 'production' && process.env.VERCEL_ENV;
+  process.env.NODE_ENV === 'production' && (process.env.VERCEL_ENV || isVercelBuild);
 
 // Create a mock client or real client based on environment
 const createPrismaClient = () => {
@@ -22,8 +35,14 @@ const createPrismaClient = () => {
           return async () => { };
         }
         
-        // Return empty results for any database queries during build
-        return () => Promise.resolve([]);
+        // Create a deeper proxy for method chains
+        return () => {
+          // Return a chainable proxy that resolves to empty results
+          return new Proxy({} as any, {
+            get: () => () => Promise.resolve([]),
+            apply: () => Promise.resolve([])
+          });
+        };
       }
     });
   }

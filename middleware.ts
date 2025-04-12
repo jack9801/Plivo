@@ -34,9 +34,11 @@ export function middleware(request: NextRequest) {
   }
 
   // Redirect to sign-in page if not authenticated
-  const signInUrl = new URL('/sign-in', request.url);
-  signInUrl.searchParams.set('redirect_url', request.url);
-  return NextResponse.redirect(signInUrl);
+  // Create a new URL object for redirect
+  const url = request.nextUrl.clone();
+  url.pathname = '/sign-in';
+  url.searchParams.set('redirect_url', request.url);
+  return NextResponse.redirect(url);
 }
 
 export const config = {

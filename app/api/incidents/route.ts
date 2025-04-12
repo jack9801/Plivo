@@ -1,3 +1,6 @@
+// Add dynamic directive at the beginning of the file
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { sendEmail, getIncidentCreatedTemplate } from "@/lib/email";

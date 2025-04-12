@@ -4,12 +4,27 @@
   "installCommand": "npm install --legacy-peer-deps --force",
   "framework": "nextjs",
   "env": {
-    "NEXT_PUBLIC_APP_URL": "$VERCEL_URL"
+    "NEXT_PUBLIC_APP_URL": "$VERCEL_URL",
+    "NODE_ENV": "production"
   },
   "builds": [
     {
       "src": "package.json",
-      "use": "@vercel/node"
+      "use": "@vercel/next"
+    }
+  ],
+  "build": {
+    "env": {
+      "NODE_ENV": "production"
+    }
+  },
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate"
+      },
+      "dest": "/api/$1"
     }
   ]
 } 
