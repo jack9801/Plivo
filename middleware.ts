@@ -24,8 +24,18 @@ const publicPaths = [
 const isDemoUser = (token: string | undefined): boolean => {
   if (!token) return false;
   
-  // Simple check - if token exists, assume it's valid for demo purposes
-  return true;
+  try {
+    // In demo mode, any token is accepted
+    if (process.env.DEMO_MODE === 'true') {
+      return true;
+    }
+    
+    // Simple check - if token exists and we're in demo mode
+    return token.length > 0;
+  } catch (error) {
+    console.error('Error checking demo user:', error);
+    return false;
+  }
 };
 
 // Specify runtime as 'nodejs' (not edge)
@@ -33,6 +43,9 @@ export const runtime = 'nodejs';
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  
+  // In demo mode, bypass most authentication checks
+  const isDemoModeActive = process.env.DEMO_MODE === 'true';
   
   // Additional path checks for static assets and API routes
   if (
@@ -49,6 +62,17 @@ export function middleware(request: NextRequest) {
     pathname === path || pathname.startsWith(`${path}/`)
   );
 
+  // If path is public, allow access unconditionally
+  if (isPublicPath) {
+    return NextResponse.next();
+  }
+
+  // DEMO_MODE overrides authentication for testing
+  if (isDemoModeActive) {
+    console.log('Demo mode is active, bypassing authentication');
+    return NextResponse.next();
+  }
+
   // Check for authentication cookie
   const authCookie = request.cookies.get('__clerk_db_jwt');
   const isAuthenticated = !!authCookie?.value;
@@ -56,13 +80,8 @@ export function middleware(request: NextRequest) {
   // For demo mode, just check if the cookie exists at all
   const isDemoAuthenticated = isAuthenticated && isDemoUser(authCookie?.value);
 
-  // If path is public or user is authenticated, allow access
-  if (isPublicPath || isAuthenticated || isDemoAuthenticated) {
-    return NextResponse.next();
-  }
-
-  // DEMO_MODE overrides authentication for testing
-  if (process.env.DEMO_MODE === 'true') {
+  // If user is authenticated or demo authenticated, allow access
+  if (isAuthenticated || isDemoAuthenticated) {
     return NextResponse.next();
   }
 
