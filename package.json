@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node build-vercel.js",
-    "vercel-build": "node build-vercel.js",
+    "build": "node -e \"const fs=require('fs');const p=JSON.parse(fs.readFileSync('./package.json'));p.dependencies['@clerk/nextjs']='4.27.2';fs.writeFileSync('./package.json',JSON.stringify(p,null,2))\" && next build",
+    "vercel-build": "next build",
     "start": "NODE_ENV=production node server.js",
     "start:win": "set NODE_ENV=production && node server.js",
     "lint": "next lint"
