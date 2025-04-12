@@ -7,6 +7,9 @@ interface ServiceStatus {
   description?: string;
 }
 
+// Create type for service status
+type ServiceStatusType = 'OPERATIONAL' | 'DEGRADED' | 'OUTAGE';
+
 const ServiceStatusCard: React.FC<{
   service: ServiceStatus;
   onUpdate: (service: ServiceStatus) => void;
@@ -79,7 +82,10 @@ const ServiceStatusCard: React.FC<{
         <div className="flex flex-col items-end space-y-2">
           <select
             value={service.status}
-            onChange={(e) => onUpdate({ ...service, status: e.target.value as 'OPERATIONAL' | 'DEGRADED' | 'OUTAGE' })}
+            onChange={(e) => {
+              const newStatus = e.target.value as ServiceStatusType;
+              onUpdate({ ...service, status: newStatus });
+            }}
             className={`px-3 py-1 rounded-md text-sm font-medium ${
               service.status === 'OPERATIONAL' ? 'bg-green-100 text-green-800' :
               service.status === 'DEGRADED' ? 'bg-yellow-100 text-yellow-800' :
@@ -113,10 +119,14 @@ const ServiceStatusCard: React.FC<{
 const AddServiceForm: React.FC<{
   onSubmit: (service: Omit<ServiceStatus, 'id'>) => void;
 }> = ({ onSubmit }) => {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string;
+    description: string;
+    status: ServiceStatusType;
+  }>({
     name: '',
     description: '',
-    status: 'OPERATIONAL' as const,
+    status: 'OPERATIONAL',
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -156,7 +166,10 @@ const AddServiceForm: React.FC<{
           <label className="block text-sm font-medium text-gray-700">Status</label>
           <select
             value={formData.status}
-            onChange={(e) => setFormData({ ...formData, status: e.target.value as 'OPERATIONAL' | 'DEGRADED' | 'OUTAGE' })}
+            onChange={(e) => {
+              const newStatus = e.target.value as ServiceStatusType;
+              setFormData({ ...formData, status: newStatus });
+            }}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           >
             <option value="OPERATIONAL">Operational</option>
