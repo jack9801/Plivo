@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
@@ -11,70 +11,111 @@ export default function SignInPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<string | null>(null);
 
   const redirectUrl = searchParams.get("redirect_url") || "/dashboard";
+
+  // Clear any previous errors on component mount
+  useEffect(() => {
+    setError("");
+    // Display environment info in development for debugging
+    if (process.env.NODE_ENV === 'development') {
+      setDebugInfo(`APP_URL: ${process.env.NEXT_PUBLIC_APP_URL}`);
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setError("Please enter a valid email address");
-      setIsLoading(false);
-      return;
-    }
-
-    // Validate password length
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
-      setIsLoading(false);
-      return;
-    }
-
     try {
-      // Call the sign-in API
-      const response = await fetch("/api/auth/signin", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ email, password })
-      });
-
-      let data;
-      try {
-        // Safely parse JSON response
-        const text = await response.text();
-        try {
-          data = JSON.parse(text);
-        } catch (parseError) {
-          console.error("Error parsing response:", text);
-          throw new Error("Server returned an invalid response. Please try again later.");
-        }
-      } catch (parseError) {
-        setError("Failed to parse server response. Please try again later.");
-        console.error("Parse error:", parseError);
+      // Basic validation
+      if (!email || !password) {
+        setError("Email and password are required");
         setIsLoading(false);
         return;
       }
 
-      if (!response.ok) {
-        throw new Error(data.error || "Invalid email or password");
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        setError("Please enter a valid email address");
+        setIsLoading(false);
+        return;
       }
 
-      if (data.success) {
-        // Redirect to the dashboard or the original requested URL
-        router.push(redirectUrl);
-      } else {
-        throw new Error(data.error || "Something went wrong. Please try again.");
+      // Validate password length
+      if (password.length < 6) {
+        setError("Password must be at least 6 characters");
+        setIsLoading(false);
+        return;
       }
-    } catch (err) {
-      console.error("Authentication error:", err);
-      setError(err instanceof Error ? err.message : "Failed to sign in. Please try again.");
-    } finally {
+
+      // Call the sign-in API with error handling
+      let response;
+      try {
+        response = await fetch("/api/auth/signin", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ email, password })
+        });
+      } catch (fetchError) {
+        console.error("Network error during fetch:", fetchError);
+        setError("Network error. Please check your internet connection and try again.");
+        setIsLoading(false);
+        return;
+      }
+
+      // Handle response text - use try-catch for safety
+      let responseText = "";
+      try {
+        responseText = await response.text();
+      } catch (textError) {
+        console.error("Error getting response text:", textError);
+        setError("Failed to read server response. Please try again later.");
+        setIsLoading(false);
+        return;
+      }
+
+      // Try to parse the JSON
+      let data;
+      try {
+        // Make sure we have a non-empty string before parsing
+        if (!responseText || responseText.trim() === "") {
+          throw new Error("Empty response from server");
+        }
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error("Error parsing JSON response:", parseError);
+        console.error("Raw response:", responseText);
+        setError("Server returned an invalid response. Please try again later.");
+        setIsLoading(false);
+        return;
+      }
+
+      // Handle unsuccessful responses
+      if (!response.ok) {
+        setError(data?.error || `Error ${response.status}: ${response.statusText || "Unknown error"}`);
+        setIsLoading(false);
+        return;
+      }
+
+      // Check for success flag
+      if (!data.success) {
+        setError(data?.error || "Sign in failed. Please try again.");
+        setIsLoading(false);
+        return;
+      }
+
+      // Success - redirect
+      console.log("Sign in successful, redirecting to:", redirectUrl);
+      router.push(redirectUrl);
+    } catch (error: any) {
+      console.error("Unhandled error during sign in:", error);
+      setError(error?.message || "An unexpected error occurred. Please try again later.");
       setIsLoading(false);
     }
   };
@@ -93,6 +134,12 @@ export default function SignInPage() {
           </div>
         )}
 
+        {debugInfo && (
+          <div className="p-3 bg-blue-100 border border-blue-400 text-blue-700 rounded text-xs">
+            {debugInfo}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
             <label htmlFor="email" className="text-sm font-medium">
@@ -106,6 +153,7 @@ export default function SignInPage() {
               required
               className="w-full p-2 border rounded-md"
               placeholder="you@example.com"
+              disabled={isLoading}
             />
           </div>
 
@@ -120,6 +168,7 @@ export default function SignInPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               className="w-full p-2 border rounded-md"
+              disabled={isLoading}
             />
           </div>
 

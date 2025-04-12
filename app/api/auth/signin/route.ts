@@ -8,6 +8,11 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   try {
+    console.log("[Sign In] API called");
+    
+    // Check environment mode
+    console.log(`[Sign In] Environment: ${process.env.NODE_ENV}`);
+    
     // Safety check for request body
     let body;
     try {
@@ -26,17 +31,34 @@ export async function POST(request: Request) {
     const emailPrefix = email ? email.split('@')[0].substring(0, 3) + "***" : "undefined";
     console.log(`[Sign In] Attempt for email: ${emailPrefix}@...`);
 
-    // Check database connection
+    // Check database connection with enhanced error info
+    let dbConnectResult = false;
+    let dbErrorMessage = "";
+    
     try {
+      console.log("[Sign In] Checking database connection...");
+      console.log(`[Sign In] Database URL Pattern: ${process.env.DATABASE_URL ? 
+        process.env.DATABASE_URL.split('@')[0].substring(0, 12) + '...' : 
+        'Not configured'}`);
+      
       await prisma.$queryRaw`SELECT 1`;
+      dbConnectResult = true;
       console.log("[Sign In] Database connection confirmed");
-    } catch (dbConnError) {
+    } catch (dbConnError: any) {
+      dbErrorMessage = dbConnError?.message || "Unknown database error";
       console.error("[Sign In] Database connection failed:", dbConnError);
-      return NextResponse.json({ 
-        error: "Database connection failed", 
-        details: (dbConnError as Error).message,
-        success: false
-      }, { status: 500 });
+      console.error(`[Sign In] Database error details: ${dbErrorMessage}`);
+      
+      // Don't immediately return to allow for alternative auth in development
+      if (process.env.NODE_ENV === 'production') {
+        return NextResponse.json({ 
+          error: "Database connection failed. Please try again later.", 
+          details: dbErrorMessage,
+          success: false
+        }, { status: 503 });
+      } else {
+        console.log("[Sign In] Development mode - continuing despite DB error");
+      }
     }
 
     // Validate required fields
@@ -48,6 +70,44 @@ export async function POST(request: Request) {
       );
     }
 
+    // Development mode fallback user for testing without DB
+    if (process.env.NODE_ENV !== 'production' && email === 'admin@example.com' && password === 'password123') {
+      console.log("[Sign In] Using development fallback user");
+      
+      const devToken = createToken({
+        userId: 'dev-user-id',
+        email: 'admin@example.com',
+      });
+      
+      cookies().set({
+        name: "__clerk_db_jwt",
+        value: devToken,
+        httpOnly: true,
+        path: "/",
+        secure: false,
+        maxAge: 60 * 60 * 24 * 7, // 1 week
+        sameSite: "lax"
+      });
+      
+      return NextResponse.json({
+        user: {
+          id: 'dev-user-id',
+          email: 'admin@example.com',
+          name: 'Admin User',
+        },
+        success: true
+      });
+    }
+
+    // If we're in production and DB connection failed earlier, return an error
+    if (process.env.NODE_ENV === 'production' && !dbConnectResult) {
+      return NextResponse.json({ 
+        error: "Database connection error", 
+        details: dbErrorMessage,
+        success: false
+      }, { status: 503 });
+    }
+    
     // Find the user
     try {
       const user = await prisma.user.findUnique({

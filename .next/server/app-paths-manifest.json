@@ -1,8 +1,6 @@
 {
   "/page": "app/page.js",
   "/sign-in/[[...sign-in]]/page": "app/sign-in/[[...sign-in]]/page.js",
-  "/api/organizations/route": "app/api/organizations/route.js",
-  "/api/organizations/[id]/route": "app/api/organizations/[id]/route.js",
   "/dashboard/page": "app/dashboard/page.js",
   "/dashboard/organizations/page": "app/dashboard/organizations/page.js",
   "/dashboard/organizations/[id]/page": "app/dashboard/organizations/[id]/page.js"
