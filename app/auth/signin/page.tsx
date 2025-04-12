@@ -1,5 +1,6 @@
+"use client";
 import React, { useState } from "react";
-import { useRouter } from "next/router";
+import { useRouter } from "next/navigation"; // Changed from next/router to next/navigation
 import { signIn } from "next-auth/react";
 
 const LoginForm: React.FC = () => {
@@ -66,9 +67,9 @@ const LoginForm: React.FC = () => {
       {error && <p>{error}</p>}
       <button type="submit" disabled={isLoading}>
         {isLoading ? "Loading..." : "Login"}
-      </button>
-    </form>
-  );
+    </form>ton>
+  );</form>
+};);
 };
-
+export default LoginForm;
 export default LoginForm;
