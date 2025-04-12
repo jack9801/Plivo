@@ -94,7 +94,10 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Error creating organization:", error);
     return NextResponse.json(
-      { error: "Failed to create organization", details: error.message },
+      { 
+        error: "Failed to create organization", 
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

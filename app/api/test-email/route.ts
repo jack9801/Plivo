@@ -101,18 +101,11 @@ If you're seeing this email, your email configuration is working correctly!
       message: 'Test email triggered, check server logs and Mailtrap inbox',
       result: emailResult
     });
-  } catch (error: any) {
-    console.error('Test email error:', error);
-    
+  } catch (error) {
+    console.error('Error sending test email:', error);
     return NextResponse.json({
       success: false,
-      message: 'Failed to send test email',
-      error: {
-        message: error.message,
-        code: error.code,
-        stack: error.stack,
-        fullError: JSON.stringify(error, null, 2)
-      }
+      message: error instanceof Error ? error.message : 'Unknown error',
     }, { status: 500 });
   }
 } 

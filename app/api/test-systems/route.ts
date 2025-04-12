@@ -38,8 +38,8 @@ export async function GET(request: Request) {
         subscriptions: subscriptionCount
       };
     } catch (dbError) {
-      results.db.connection = "Failed";
-      results.db.error = dbError.message;
+      results.db.success = false;
+      results.db.error = dbError instanceof Error ? dbError.message : 'Unknown error';
     }
     
     // 3. Test a subscription record
@@ -70,13 +70,14 @@ export async function GET(request: Request) {
         
         results.email.test = emailResult.success ? "Success" : "Failed";
         if (!emailResult.success) {
-          results.email.error = emailResult.error;
+          results.email.success = false;
+          results.email.error = emailResult.error instanceof Error ? emailResult.error.message : emailResult.error;
         } else {
           results.email.messageId = emailResult.messageId;
         }
       } catch (emailError) {
-        results.email.test = "Failed";
-        results.email.error = emailError.message;
+        results.email.success = false;
+        results.email.error = emailError instanceof Error ? emailError.message : 'Unknown error';
       }
     } else {
       results.email.test = "Skipped - No configuration";
@@ -89,15 +90,9 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error("Error in system test:", error);
-    return NextResponse.json(
-      { 
-        status: "error", 
-        message: "System test failed", 
-        error: error.message,
-        timestamp: new Date().toISOString(),
-        results
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
   }
 } 

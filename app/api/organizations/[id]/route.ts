@@ -154,7 +154,10 @@ export async function DELETE(
   } catch (error) {
     console.error("Error deleting organization:", error);
     return NextResponse.json(
-      { error: "Failed to delete organization", details: error.message },
+      { 
+        error: "Failed to delete organization", 
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

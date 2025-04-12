@@ -196,16 +196,12 @@ Request details:
       message: "Subscription created. Please check your email to confirm.",
       emailStatus: emailResult.success ? "sent" : "failed"
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error creating subscription:", error);
-    return NextResponse.json(
-      { 
-        error: "Failed to create subscription", 
-        message: error.message,
-        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
   }
 }
 
