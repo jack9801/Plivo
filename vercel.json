@@ -11,8 +11,5 @@
       "src": "package.json",
       "use": "@vercel/node"
     }
-  ],
-  "buildOptions": {
-    "zeroConfig": true
-  }
+  ]
 } 
