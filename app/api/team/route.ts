@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 
 export async function POST(req: Request) {
   try {
-    const { role, organizationId, userId } = await req.json();
+    const { role, organizationId, userId, email, name } = await req.json();
 
     // Validate input
     if (!role || !organizationId || !userId) {
@@ -13,12 +13,37 @@ export async function POST(req: Request) {
       );
     }
 
+    // Generate default values for email and name if not provided
+    const userEmail = email || `${userId}@example.com`;
+    const userName = name || userId;
+    
+    // Check if this is a demo organization
+    const isDemoOrg = organizationId.startsWith('demo-') || process.env.DEMO_MODE === 'true';
+    
+    // Handle demo mode
+    if (isDemoOrg) {
+      console.log(`Demo team member creation requested for org: ${organizationId}, user: ${userId}`);
+      return NextResponse.json({
+        id: `demo-member-${Date.now()}`,
+        organizationId,
+        userId,
+        role,
+        email: userEmail,
+        name: userName,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        demoMode: true
+      }, { status: 201 });
+    }
+
     // Create team member
     const teamMember = await prisma.member.create({
       data: {
         userId,
         role,
-        organizationId
+        organizationId,
+        email: userEmail,
+        name: userName
       },
     });
 

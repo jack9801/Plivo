@@ -1,52 +1,71 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { useRouter } from "next/navigation";
 
 export default function TeamPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("");
-  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
+  const { toast } = useToast();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setIsSubmitting(true);
+
     try {
+      // This is a simplified example - in a real app, you'd get these from context or UI
+      const organizationId = "your-organization-id";
+      const userId = "user-" + Date.now();
+      
       const response = await fetch("/api/team", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          name,
-          email,
+          organizationId,
+          userId,
           role,
+          email,
+          name
         }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to add team member");
+        throw new Error("Failed to create team member");
       }
 
       toast({
         title: "Success",
-        description: "Team member added successfully",
+        description: "Team member created successfully",
       });
+      
+      // Reset form
+      setName("");
+      setEmail("");
+      setRole("");
+      
+      // Refresh the data
       router.refresh();
     } catch (error) {
+      console.error("Error creating team member:", error);
       toast({
         title: "Error",
-        description: "Failed to add team member",
+        description: "Failed to create team member",
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
-  };
+  }
 
   return (
     <div className="container mx-auto py-6">
@@ -94,7 +113,9 @@ export default function TeamPage() {
               />
             </div>
 
-            <Button type="submit">Add Team Member</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Adding..." : "Add Team Member"}
+            </Button>
           </form>
         </CardContent>
       </Card>
