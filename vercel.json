@@ -1,13 +1,19 @@
 {
   "version": 2,
   "buildCommand": "npm run build",
-  "installCommand": "npm install --legacy-peer-deps",
+  "installCommand": "npm install --legacy-peer-deps --force",
   "framework": "nextjs",
   "outputDirectory": ".next",
   "env": {
     "NEXT_PUBLIC_APP_URL": {
       "type": "string",
       "value": "https://$VERCEL_URL"
+    }
+  },
+  "ignoreCommand": "echo $VERCEL_GIT_COMMIT_REF",
+  "git": {
+    "deploymentEnabled": {
+      "main": true
     }
   }
 } 
