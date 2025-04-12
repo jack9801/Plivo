@@ -44,16 +44,33 @@ export default function SignInPage() {
         body: JSON.stringify({ email, password })
       });
 
+      let data;
+      try {
+        // Safely parse JSON response
+        const text = await response.text();
+        try {
+          data = JSON.parse(text);
+        } catch (parseError) {
+          console.error("Error parsing response:", text);
+          throw new Error("Server returned an invalid response. Please try again later.");
+        }
+      } catch (parseError) {
+        setError("Failed to parse server response. Please try again later.");
+        console.error("Parse error:", parseError);
+        setIsLoading(false);
+        return;
+      }
+
       if (!response.ok) {
-        const data = await response.json();
         throw new Error(data.error || "Invalid email or password");
       }
 
-      // Set auth cookie on successful login
-      document.cookie = `__clerk_db_jwt=${email}; path=/; max-age=${60 * 60 * 24 * 7}`;
-      
-      // Redirect to the dashboard or the original requested URL
-      router.push(redirectUrl);
+      if (data.success) {
+        // Redirect to the dashboard or the original requested URL
+        router.push(redirectUrl);
+      } else {
+        throw new Error(data.error || "Something went wrong. Please try again.");
+      }
     } catch (err) {
       console.error("Authentication error:", err);
       setError(err instanceof Error ? err.message : "Failed to sign in. Please try again.");

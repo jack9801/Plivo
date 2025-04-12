@@ -8,6 +8,24 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   try {
+    // Safety check for request body
+    let body;
+    try {
+      body = await request.json();
+    } catch (jsonError) {
+      console.error("[Sign In] Invalid JSON in request body:", jsonError);
+      return NextResponse.json({ 
+        error: "Invalid request format", 
+        success: false 
+      }, { status: 400 });
+    }
+
+    const { email, password } = body;
+
+    // Log attempt with partial email for privacy
+    const emailPrefix = email ? email.split('@')[0].substring(0, 3) + "***" : "undefined";
+    console.log(`[Sign In] Attempt for email: ${emailPrefix}@...`);
+
     // Check database connection
     try {
       await prisma.$queryRaw`SELECT 1`;
@@ -16,20 +34,16 @@ export async function POST(request: Request) {
       console.error("[Sign In] Database connection failed:", dbConnError);
       return NextResponse.json({ 
         error: "Database connection failed", 
-        details: (dbConnError as Error).message 
+        details: (dbConnError as Error).message,
+        success: false
       }, { status: 500 });
     }
-
-    const body = await request.json();
-    const { email, password } = body;
-
-    console.log(`[Sign In] Attempt for email: ${email}`);
 
     // Validate required fields
     if (!email || !password) {
       console.log("[Sign In] Missing email or password");
       return NextResponse.json(
-        { error: "Email and password are required" },
+        { error: "Email and password are required", success: false },
         { status: 400 }
       );
     }
@@ -40,29 +54,29 @@ export async function POST(request: Request) {
         where: { email },
       });
 
-      // If user doesn't exist or password is wrong
+      // If user doesn't exist
       if (!user) {
-        console.log(`[Sign In] User not found: ${email}`);
+        console.log(`[Sign In] User not found: ${emailPrefix}@...`);
         return NextResponse.json(
-          { error: "Invalid email or password" },
+          { error: "Invalid email or password", success: false },
           { status: 401 }
         );
       }
 
-      console.log(`[Sign In] User found: ${email}, verifying password`);
+      console.log(`[Sign In] User found: ${emailPrefix}@..., verifying password`);
 
       // Verify password
       try {
         const isPasswordValid = await bcrypt.compare(password, user.password);
         if (!isPasswordValid) {
-          console.log(`[Sign In] Invalid password for: ${email}`);
+          console.log(`[Sign In] Invalid password for: ${emailPrefix}@...`);
           return NextResponse.json(
-            { error: "Invalid email or password" },
+            { error: "Invalid email or password", success: false },
             { status: 401 }
           );
         }
 
-        console.log(`[Sign In] Password valid for: ${email}, creating token`);
+        console.log(`[Sign In] Password valid for: ${emailPrefix}@..., creating token`);
 
         // Create a JWT token with user info
         try {
@@ -71,7 +85,7 @@ export async function POST(request: Request) {
             email: user.email,
           });
 
-          console.log(`[Sign In] Token created for: ${email}, setting cookie`);
+          console.log(`[Sign In] Token created for: ${emailPrefix}@..., setting cookie`);
 
           // Set auth cookie
           cookies().set({
@@ -87,28 +101,37 @@ export async function POST(request: Request) {
           // Don't send the password back to the client
           const { password: _, ...userWithoutPassword } = user;
 
-          console.log(`[Sign In] Success for: ${email}`);
+          console.log(`[Sign In] Success for: ${emailPrefix}@...`);
 
           return NextResponse.json({
             user: userWithoutPassword,
             success: true
           });
         } catch (tokenError) {
-          console.error(`[Sign In] Token creation error for ${email}:`, tokenError);
-          throw new Error(`Token creation failed: ${(tokenError as Error).message}`);
+          console.error(`[Sign In] Token creation error for ${emailPrefix}@...`, tokenError);
+          return NextResponse.json({ 
+            error: `Token creation failed: ${(tokenError as Error).message}`,
+            success: false
+          }, { status: 500 });
         }
       } catch (passwordError) {
-        console.error(`[Sign In] Password comparison error for ${email}:`, passwordError);
-        throw new Error(`Password comparison failed: ${(passwordError as Error).message}`);
+        console.error(`[Sign In] Password comparison error for ${emailPrefix}@...`, passwordError);
+        return NextResponse.json({ 
+          error: `Authentication failed`,
+          success: false
+        }, { status: 500 });
       }
     } catch (userError) {
-      console.error(`[Sign In] Database error for ${email}:`, userError);
-      throw new Error(`Database operation failed: ${(userError as Error).message}`);
+      console.error(`[Sign In] Database error for ${emailPrefix}@...`, userError);
+      return NextResponse.json({ 
+        error: `Database operation failed`,
+        success: false
+      }, { status: 500 });
     }
   } catch (error) {
     console.error("Error authenticating user:", error);
     return NextResponse.json(
-      { error: "Authentication failed", details: (error as Error).message },
+      { error: "Authentication failed", details: (error as Error).message, success: false },
       { status: 500 }
     );
   }

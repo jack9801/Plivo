@@ -23,6 +23,19 @@ const isStaticGeneration =
   (process.env.VERCEL && process.env.NEXT_PUBLIC_VERCEL_ENV === 'production') ||
   process.env.NODE_ENV === 'production' && (process.env.VERCEL_ENV || isVercelBuild);
 
+// Connection options with retry logic for production
+const connectionOptions = process.env.NODE_ENV === 'production' ? {
+  log: ['error'],
+  errorFormat: 'minimal',
+  connectionLimit: 5,
+  pool: {
+    min: 2,
+    max: 10
+  }
+} : {
+  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+};
+
 // Create a mock client or real client based on environment
 const createPrismaClient = () => {
   if (isStaticGeneration) {
@@ -47,14 +60,24 @@ const createPrismaClient = () => {
     });
   }
   
-  // Use a real Prisma client for runtime
-  return new PrismaClient({
-    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-  });
+  try {
+    // Use a real Prisma client for runtime
+    console.log('Creating Prisma client for runtime with DATABASE_URL:', 
+      process.env.DATABASE_URL ? 
+        process.env.DATABASE_URL.substring(0, process.env.DATABASE_URL.indexOf('@')) + '****' : 
+        'undefined');
+    
+    return new PrismaClient(connectionOptions);
+  } catch (e) {
+    console.error('Error creating Prisma client:', e);
+    throw e;
+  }
 };
 
+// Create or reuse the prisma client
 export const prisma = global.prisma || createPrismaClient();
 
+// Only set the global prisma client in development to prevent memory leaks
 if (process.env.NODE_ENV !== 'production') global.prisma = prisma;
 
 // Helper function to check database connection
@@ -65,7 +88,9 @@ export async function checkDatabaseConnection() {
       return true;
     }
     
+    console.log('Checking database connection...');
     await prisma.$connect();
+    console.log('Database connection successful');
     return true;
   } catch (error) {
     console.error('Database connection error:', error);

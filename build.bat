@@ -58,11 +58,12 @@ if not exist ".env" (
         echo .env.example not found. Creating minimal .env file.
         echo DATABASE_URL=postgresql://postgres:postgres@localhost:5432/statuspage > .env
         echo NEXT_PUBLIC_APP_URL=http://localhost:3000 >> .env
+        echo JWT_SECRET=plivo_status_page_secret_key_please_change_me_in_production >> .env
         echo Minimal .env file created. Please update it with your actual values.
     )
 )
 
-REM Fix clerk dependency version
+REM Fix clerk dependency version if needed (for compatibility)
 echo Updating @clerk/nextjs to version 4.27.2...
 node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('./package.json'));p.dependencies['@clerk/nextjs']='4.27.2';fs.writeFileSync('./package.json',JSON.stringify(p,null,2))"
 if %ERRORLEVEL% NEQ 0 (

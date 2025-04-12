@@ -4,8 +4,11 @@ const next = require('next');
 const { Server } = require('socket.io');
 
 const dev = process.env.NODE_ENV !== 'production';
-const hostname = 'localhost';
-const port = 3000;
+const hostname = dev ? 'localhost' : '0.0.0.0';
+const port = parseInt(process.env.PORT || '3000', 10);
+
+console.log(`Starting server in ${dev ? 'development' : 'production'} mode`);
+console.log(`Hostname: ${hostname}, Port: ${port}`);
 
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
@@ -26,7 +29,12 @@ app.prepare().then(() => {
     }
   });
 
-  const io = new Server(server);
+  const io = new Server(server, {
+    cors: {
+      origin: process.env.NEXT_PUBLIC_APP_URL || '*',
+      methods: ['GET', 'POST']
+    }
+  });
 
   // Handle WebSocket connections
   io.on('connection', (socket) => {
@@ -53,8 +61,9 @@ app.prepare().then(() => {
     });
   });
 
-  server.listen(port, (err) => {
+  server.listen(port, hostname, (err) => {
     if (err) throw err;
-    console.log(`> Ready on http://${hostname}:${port}`);
+    const address = `http://${hostname === '0.0.0.0' ? 'localhost' : hostname}:${port}`;
+    console.log(`> Ready on ${address}`);
   });
 }); 

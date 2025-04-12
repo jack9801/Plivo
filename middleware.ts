@@ -6,6 +6,8 @@ const publicPaths = [
   '/',
   '/sign-in',
   '/sign-up',
+  '/forgot-password',
+  '/reset-password',
   '/status',
   '/api/public',
   '/api/auth',
@@ -19,6 +21,16 @@ const publicPaths = [
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  
+  // Additional path checks for static assets and API routes
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/static') ||
+    pathname.includes('.') || // This catches files like favicon.ico
+    pathname.startsWith('/api/public')
+  ) {
+    return NextResponse.next();
+  }
   
   // Check if the path is public
   const isPublicPath = publicPaths.some(path => 
@@ -46,13 +58,13 @@ export function middleware(request: NextRequest) {
   // Create a new URL object for redirect
   const url = request.nextUrl.clone();
   url.pathname = '/sign-in';
-  url.searchParams.set('redirect_url', request.url);
+  url.searchParams.set('redirect_url', request.nextUrl.pathname);
   return NextResponse.redirect(url);
 }
 
 export const config = {
   matcher: [
-    // Don't match API routes that are meant to be public
-    '/((?!api/public|api/auth|api/test-email|api/env-check|api/health|api/debug-subscriptions|debug|_next/static|_next/image|favicon.ico|api/subscriptions).*)',
+    // Match all paths except static files, API routes, etc.
+    '/((?!api/public|api/auth|api/test-email|api/env-check|api/health|api/debug-subscriptions|_next/static|_next/image|favicon.ico|api/subscriptions).*)',
   ],
 }; 
