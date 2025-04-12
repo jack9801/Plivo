@@ -42,16 +42,31 @@ export async function POST(req: Request) {
       );
     }
 
-    // Create team member
-    const teamMember = await prisma.member.create({
-      data: {
-        userId,
-        role,
-        organizationId
-      },
+    // Created manually with non-typed query first, then fetch it
+    const memberId = `mbr-${Date.now()}`;
+    const memberName = name || user.email.split('@')[0];
+    
+    // First create the member with raw query
+    await prisma.$executeRaw`
+      INSERT INTO "Member" ("id", "organizationId", "userId", "role", "email", "name", "createdAt", "updatedAt")
+      VALUES (
+        ${memberId}, 
+        ${organizationId}, 
+        ${userId}, 
+        ${role}, 
+        ${user.email}, 
+        ${memberName}, 
+        ${new Date()}, 
+        ${new Date()}
+      );
+    `;
+    
+    // Then fetch the created member with proper typing
+    const createdMember = await prisma.member.findUnique({
+      where: { id: memberId }
     });
 
-    return NextResponse.json(teamMember, { status: 201 });
+    return NextResponse.json(createdMember, { status: 201 });
   } catch (error) {
     console.error("Error creating team member:", error);
     return NextResponse.json(

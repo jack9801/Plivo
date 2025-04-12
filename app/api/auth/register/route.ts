@@ -62,7 +62,9 @@ export async function POST(request: NextRequest) {
           data: {
             userId: user.id,
             organizationId: organization.id,
-            role: "ADMIN"
+            role: "ADMIN",
+            email: user.email,
+            name: email.split('@')[0] // Use username part of the email as name
           }
         });
 

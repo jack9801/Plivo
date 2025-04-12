@@ -66,7 +66,9 @@ export async function POST(
       data: {
         organizationId: id,
         userId,
-        role: role || "MEMBER"
+        role: role || "MEMBER",
+        email: body.email || "unknown@example.com",
+        name: body.name || "Unknown Member"
       }
     });
 
