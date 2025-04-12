@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 
 declare global {
   var prisma: PrismaClient | undefined;
@@ -25,15 +25,12 @@ const isStaticGeneration =
 
 // Connection options with retry logic for production
 const connectionOptions = process.env.NODE_ENV === 'production' ? {
-  log: ['error'],
-  errorFormat: 'minimal',
-  connectionLimit: 5,
-  pool: {
-    min: 2,
-    max: 10
-  }
+  log: ['error'] as Prisma.LogLevel[],
+  errorFormat: 'minimal' as Prisma.ErrorFormat,
+  // Note: connectionLimit and pool are not valid PrismaClient options
+  // They've been removed as they're not supported
 } : {
-  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+  log: (process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error']) as Prisma.LogLevel[],
 };
 
 // Create a mock client or real client based on environment
