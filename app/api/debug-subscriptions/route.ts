@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/db";
 
 // GET /api/debug-subscriptions - Get all subscriptions with more details
 export async function GET(request: Request) {

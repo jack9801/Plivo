@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/db";
 
 // GET /api/public/status - Get the public status page data
 export async function GET(request: Request) {

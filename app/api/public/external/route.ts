@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/db";
 
 // GET /api/public/external - Get minimal status data for external integrations
 export async function GET(request: Request) {

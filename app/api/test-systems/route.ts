@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 
 // GET /api/test-systems - Test various system components
