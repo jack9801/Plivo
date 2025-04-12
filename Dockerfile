@@ -13,6 +13,9 @@ RUN echo "legacy-peer-deps=true" > .npmrc && \
 # Install dependencies
 RUN npm install
 
+# Install TypeScript types for bcryptjs
+RUN npm install --save-dev @types/bcryptjs
+
 # Copy prisma schema
 COPY prisma ./prisma/
 
