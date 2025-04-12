@@ -3,12 +3,12 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   try {
-    const { name, email, role } = await req.json();
+    const { role, organizationId, userId } = await req.json();
 
     // Validate input
-    if (!name || !email || !role) {
+    if (!role || !organizationId || !userId) {
       return NextResponse.json(
-        { error: "Missing required fields" },
+        { error: "Missing required fields (role, organizationId, userId)" },
         { status: 400 }
       );
     }
@@ -16,9 +16,9 @@ export async function POST(req: Request) {
     // Create team member
     const teamMember = await prisma.member.create({
       data: {
-        name,
-        email,
+        userId,
         role,
+        organizationId
       },
     });
 
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("Error creating team member:", error);
     return NextResponse.json(
-      { error: "Failed to create team member" },
+      { error: "Failed to create team member", details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
@@ -39,7 +39,7 @@ export async function GET() {
   } catch (error) {
     console.error("Error fetching team members:", error);
     return NextResponse.json(
-      { error: "Failed to fetch team members" },
+      { error: "Failed to fetch team members", details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
