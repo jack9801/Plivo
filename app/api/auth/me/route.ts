@@ -1,14 +1,26 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/auth";
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // Get the auth cookie
-    const cookieStore = cookies();
-    const token = cookieStore.get("__clerk_db_jwt")?.value;
+    let token;
+    
+    // Check for Authorization Bearer token first
+    const authHeader = request.headers.get('Authorization');
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7); // Remove 'Bearer ' prefix
+      console.log('Using token from Authorization header');
+    }
+    
+    // If no Authorization header, check cookies
+    if (!token) {
+      const cookieStore = cookies();
+      token = cookieStore.get("__clerk_db_jwt")?.value;
+      console.log('Using token from cookies');
+    }
 
     if (!token) {
       return NextResponse.json({ 
@@ -32,6 +44,8 @@ export async function GET() {
       email: payload.email,
       organizationId: payload.organizationId
     };
+    
+    console.log(`Retrieved user from token: ${user.id}, org: ${user.organizationId || 'none'}`);
 
     return NextResponse.json({ 
       user,

@@ -54,12 +54,21 @@ export function verifyToken(token: string): UserJwtPayload | null {
   try {
     console.log('Verifying token...');
     const secretKey = getSecretKey();
+    
+    // Clear previous token verification cache
     const decoded = verify(
       token, 
-      secretKey
+      secretKey,
+      { algorithms: ['HS256'] } // Explicitly specify algorithm
     ) as UserJwtPayload;
     
+    if (!decoded || !decoded.userId) {
+      console.error('Token payload is missing userId');
+      return null;
+    }
+    
     console.log(`Token verified successfully for user: ${decoded.userId}`);
+    console.log(`Organization in token: ${decoded.organizationId || 'none'}`);
     return decoded;
   } catch (error) {
     console.error('Error verifying token:', error);

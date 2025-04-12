@@ -21,6 +21,9 @@ export default function SignInPage() {
     setIsLoading(true);
 
     try {
+      // Clear any existing authentication tokens first
+      localStorage.removeItem('auth_token');
+      
       // Perform real authentication with the database
       const response = await fetch('/api/auth/login', {
         method: 'POST',

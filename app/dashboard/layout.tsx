@@ -29,13 +29,20 @@ export default function DashboardLayout({
     // Authentication check
     const checkAuth = async () => {
       try {
-        // First, check if we have a cookie
-        const hasCookie = document.cookie.includes("__clerk_db_jwt");
+        // Check if we have a token in localStorage
+        const token = localStorage.getItem('auth_token');
         
-        if (hasCookie) {
-          // Try to get user info from /api/auth/me
+        if (token) {
+          console.log('Token found in localStorage');
+          
+          // Try to get user info from /api/auth/me with the token
           try {
-            const response = await fetch('/api/auth/me');
+            const response = await fetch('/api/auth/me', {
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            });
+            
             if (response.ok) {
               const data = await response.json();
               console.log('Current user:', data);
@@ -45,18 +52,18 @@ export default function DashboardLayout({
                 setIsLoading(false);
                 return;
               }
+            } else {
+              // If token is invalid, remove it
+              console.error('Token validation failed, removing token');
+              localStorage.removeItem('auth_token');
             }
           } catch (error) {
             console.error('Error fetching user data:', error);
+            localStorage.removeItem('auth_token');
           }
-          
-          // If API failed but we have a cookie, still authenticate
-          setIsAuthenticated(true);
-          setIsLoading(false);
-          return;
         }
         
-        // No cookie, redirect to sign-in
+        // No valid token, redirect to sign-in
         router.push("/sign-in?redirect_url=" + encodeURIComponent(window.location.href));
       } catch (error) {
         console.error("Error checking authentication:", error);
@@ -83,7 +90,13 @@ export default function DashboardLayout({
 
   // Get organization info to display
   const orgId = currentUser?.organizationId || '';
-  const orgName = orgId.startsWith('demo-') ? (orgId === 'demo-admin-org' ? 'Admin Demo Org' : 'User Demo Org') : 'Your Organization';
+  
+  // Use a more specific organization name when available
+  const orgName = orgId 
+    ? (orgId.startsWith('demo-') 
+        ? (orgId === 'demo-admin-org' ? 'Admin Demo Org' : 'User Demo Org') 
+        : `Organization: ${orgId.substring(0, 8)}...`)
+    : 'No Organization';
 
   return (
     <div className="flex h-screen">
@@ -161,8 +174,9 @@ export default function DashboardLayout({
         <div className="p-2 mb-4">
           <button 
             onClick={() => {
-              // Delete auth cookie
+              // Delete auth cookie and localStorage
               document.cookie = "__clerk_db_jwt=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+              localStorage.removeItem('auth_token');
               router.push("/sign-in");
             }}
             className="flex items-center gap-3 p-3 rounded hover:bg-[#2E2E2E] w-full text-left"

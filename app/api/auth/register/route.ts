@@ -77,7 +77,8 @@ export async function POST(request: NextRequest) {
     // Generate a token for the user
     const token = await createToken({ 
       userId: result.user.id, 
-      email: result.user.email 
+      email: result.user.email,
+      ...(result.organization ? { organizationId: result.organization.id } : {})
     });
 
     // Return success response

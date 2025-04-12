@@ -34,6 +34,9 @@ export default function SignUpPage() {
     }
 
     try {
+      // Clear any existing authentication tokens first
+      localStorage.removeItem('auth_token');
+      
       // Register user with the API
       const response = await fetch('/api/auth/register', {
         method: 'POST',
