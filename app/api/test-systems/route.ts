@@ -12,7 +12,9 @@ export async function GET(request: Request) {
     },
     db: {
       connection: "Pending",
-      success: true
+      success: true,
+      counts: {},
+      error: null
     },
     endpoints: {}
   };
