@@ -1,7 +1,11 @@
 {
+  "/api/organizations/route": "app/api/organizations/route.js",
+  "/api/incidents/route": "app/api/incidents/route.js",
+  "/api/incidents/[id]/route": "app/api/incidents/[id]/route.js",
+  "/api/incidents/[id]/updates/route": "app/api/incidents/[id]/updates/route.js",
+  "/dashboard/organizations/[id]/page": "app/dashboard/organizations/[id]/page.js",
   "/dashboard/organizations/[id]/services/new/page": "app/dashboard/organizations/[id]/services/new/page.js",
-  "/dashboard/organizations/[id]/members/new/page": "app/dashboard/organizations/[id]/members/new/page.js",
   "/dashboard/incidents/page": "app/dashboard/incidents/page.js",
-  "/dashboard/incidents/[id]/page": "app/dashboard/incidents/[id]/page.js",
-  "/dashboard/incidents/new/page": "app/dashboard/incidents/new/page.js"
+  "/dashboard/incidents/new/page": "app/dashboard/incidents/new/page.js",
+  "/dashboard/incidents/[id]/page": "app/dashboard/incidents/[id]/page.js"
 }
