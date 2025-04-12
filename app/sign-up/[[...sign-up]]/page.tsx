@@ -11,17 +11,17 @@ export default function SignUpPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [demoMode, setDemoMode] = useState(true);
+  const [demoMode, setDemoMode] = useState(false);
   const [isVercelEnv, setIsVercelEnv] = useState(false);
 
-  // Show demo mode banner on component mount and check environment
+  // Check environment on component mount
   useEffect(() => {
     // Check if we're in a Vercel environment
     const isVercel = window.location.hostname.includes('vercel.app');
     setIsVercelEnv(isVercel);
     
-    // Always enable demo mode on Vercel or if demo mode is enabled locally
-    setDemoMode(true);
+    // Only enable demo mode by default on Vercel environments
+    setDemoMode(isVercel);
   }, []);
 
   const handleDemoLogin = () => {
@@ -33,8 +33,8 @@ export default function SignUpPage() {
     e.preventDefault();
     setError("");
     
-    // In demo mode or Vercel environment, don't actually try to register
-    if (demoMode || isVercelEnv) {
+    // In demo mode, don't actually try to register
+    if (demoMode) {
       setError("Account creation is disabled in demo mode. Please use the provided demo accounts to sign in.");
       return;
     }
@@ -61,6 +61,7 @@ export default function SignUpPage() {
 
     // Call the sign-up API
     try {
+      console.log("Attempting to create account for:", email);
       const response = await fetch("/api/auth/signup", {
         method: "POST",
         headers: {
@@ -73,6 +74,7 @@ export default function SignUpPage() {
       let data;
       try {
         const text = await response.text();
+        console.log("Response:", text.substring(0, 100));
         data = JSON.parse(text);
       } catch (parseError) {
         console.error("Failed to parse response:", parseError);
@@ -80,8 +82,14 @@ export default function SignUpPage() {
       }
 
       if (!response.ok) {
+        if (response.status === 409) {
+          throw new Error("User with this email already exists. Please sign in instead.");
+        }
         throw new Error(data.error || "Failed to sign up");
       }
+      
+      // Account created successfully
+      console.log("Account created successfully, redirecting to dashboard");
       
       // Redirect to the dashboard
       router.push("/dashboard");
@@ -93,6 +101,10 @@ export default function SignUpPage() {
     }
   };
 
+  const toggleDemoMode = () => {
+    setDemoMode(!demoMode);
+  };
+
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
       <div className="w-full max-w-md p-8 space-y-8 bg-card rounded-lg shadow-lg">
@@ -101,12 +113,26 @@ export default function SignUpPage() {
           <p className="text-muted-foreground mt-2">Sign up to access the dashboard</p>
           {isVercelEnv && (
             <p className="text-sm font-medium text-yellow-600 mt-2">
-              Demo Mode Active
+              Vercel Deployment
             </p>
           )}
         </div>
 
-        {(demoMode || isVercelEnv) && (
+        {/* Demo mode switch */}
+        <div className="flex items-center justify-center">
+          <label className="inline-flex items-center cursor-pointer">
+            <input 
+              type="checkbox" 
+              className="sr-only peer" 
+              checked={demoMode}
+              onChange={toggleDemoMode}
+            />
+            <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            <span className="ms-3 text-sm font-medium">Demo Mode {demoMode ? 'On' : 'Off'}</span>
+          </label>
+        </div>
+
+        {demoMode && (
           <div className="p-4 bg-yellow-100 border border-yellow-400 text-yellow-800 rounded">
             <h3 className="font-bold">Demo Mode Active</h3>
             <p className="mb-3">Account creation is currently disabled in demo mode.</p>
@@ -143,7 +169,7 @@ export default function SignUpPage() {
               required
               className="w-full p-2 border rounded-md"
               placeholder="you@example.com"
-              disabled={demoMode || isVercelEnv || isLoading}
+              disabled={demoMode || isLoading}
             />
           </div>
 
@@ -158,7 +184,7 @@ export default function SignUpPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               className="w-full p-2 border rounded-md"
-              disabled={demoMode || isVercelEnv || isLoading}
+              disabled={demoMode || isLoading}
             />
             <p className="text-xs text-muted-foreground">
               Must be at least 6 characters long
@@ -176,13 +202,13 @@ export default function SignUpPage() {
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
               className="w-full p-2 border rounded-md"
-              disabled={demoMode || isVercelEnv || isLoading}
+              disabled={demoMode || isLoading}
             />
           </div>
 
           <button
             type="submit"
-            disabled={demoMode || isVercelEnv || isLoading}
+            disabled={demoMode || isLoading}
             className="w-full py-2 px-4 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50"
           >
             {isLoading ? "Creating account..." : "Sign Up"}

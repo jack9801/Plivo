@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/db";
 
 // GET /api/organizations/[id] - Get a specific organization
 export async function GET(
@@ -8,6 +8,20 @@ export async function GET(
 ) {
   try {
     const { id } = params;
+    
+    // Check if this is a demo ID (starts with 'demo-')
+    if (id.startsWith('demo-')) {
+      // Return a mock organization for demo mode
+      return NextResponse.json({
+        id,
+        name: id === 'demo-admin-org' ? 'Admin Demo Organization' : 'Demo Organization',
+        slug: id === 'demo-admin-org' ? 'admin-demo-org' : 'demo-org',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        services: [],
+        members: []
+      });
+    }
     
     const organization = await prisma.organization.findUnique({
       where: { id },
@@ -43,6 +57,14 @@ export async function PATCH(
     const { id } = params;
     const body = await request.json();
     const { name, slug } = body;
+
+    // Check if this is a demo ID (which can't be updated)
+    if (id.startsWith('demo-')) {
+      return NextResponse.json(
+        { error: "Demo organizations cannot be modified" },
+        { status: 403 }
+      );
+    }
 
     // Check if organization with the same slug already exists (if slug is being updated)
     if (slug) {
@@ -88,6 +110,14 @@ export async function DELETE(
 ) {
   try {
     const { id } = params;
+    
+    // Check if this is a demo ID (which can't be deleted)
+    if (id.startsWith('demo-')) {
+      return NextResponse.json(
+        { error: "Demo organizations cannot be deleted" },
+        { status: 403 }
+      );
+    }
     
     console.log(`Deleting organization with ID: ${id}`);
     

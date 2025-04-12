@@ -45,11 +45,10 @@ export const runtime = 'experimental-edge';
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
-  // Force demo mode to be true for Vercel deployment
-  const forceDemoMode = true; // This ensures demo mode works even if env vars are not set
-  const isDemoModeActive = process.env.DEMO_MODE === 'true' || forceDemoMode;
-  
-  console.log(`Path: ${pathname}, Demo mode: ${isDemoModeActive}`);
+  // For Vercel, use demo mode as a fallback if real auth fails
+  // But don't force it to always be in demo mode
+  const useDemoFallback = true; 
+  const isDemoModeActive = process.env.DEMO_MODE === 'true';
   
   // Additional path checks for static assets and API routes
   if (
@@ -71,21 +70,18 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // DEMO_MODE overrides authentication for testing
-  if (isDemoModeActive) {
-    console.log('Demo mode is active, bypassing authentication');
-    return NextResponse.next();
-  }
-
   // Check for authentication cookie
   const authCookie = request.cookies.get('__clerk_db_jwt');
   const isAuthenticated = !!authCookie?.value;
 
-  // For demo mode, just check if the cookie exists at all
-  const isDemoAuthenticated = isAuthenticated && isDemoUser(authCookie?.value);
+  // If authenticated with a real token, allow access
+  if (isAuthenticated) {
+    return NextResponse.next();
+  }
 
-  // If user is authenticated or demo authenticated, allow access
-  if (isAuthenticated || isDemoAuthenticated) {
+  // If demo mode is active as fallback, allow access as a last resort
+  if (isDemoModeActive && useDemoFallback) {
+    console.log('Demo mode is active as fallback, bypassing authentication');
     return NextResponse.next();
   }
 

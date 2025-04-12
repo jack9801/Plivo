@@ -24,8 +24,8 @@ const DEMO_USERS = [
   }
 ];
 
-// Force demo mode for Vercel deployment - ensures it works even if env vars aren't set
-const FORCE_DEMO_MODE = true;
+// Demo mode is now a fallback, not a forced option
+const USE_DEMO_FALLBACK = true;
 
 export async function POST(request: Request) {
   try {
@@ -35,7 +35,6 @@ export async function POST(request: Request) {
     console.log(`[Sign In] Environment: ${process.env.NODE_ENV}`);
     console.log(`[Sign In] App URL: ${process.env.NEXT_PUBLIC_APP_URL}`);
     console.log(`[Sign In] Demo Mode Env: ${process.env.DEMO_MODE}`);
-    console.log(`[Sign In] Forced Demo Mode: ${FORCE_DEMO_MODE}`);
     
     // Safety check for request body
     let body;
@@ -45,8 +44,7 @@ export async function POST(request: Request) {
       console.error("[Sign In] Invalid JSON in request body:", jsonError);
       return NextResponse.json({ 
         error: "Invalid request format", 
-        success: false,
-        demoMode: true 
+        success: false
       }, { status: 400 });
     }
 
@@ -56,119 +54,40 @@ export async function POST(request: Request) {
     const emailPrefix = email ? email.split('@')[0].substring(0, 3) + "***" : "undefined";
     console.log(`[Sign In] Attempt for email: ${emailPrefix}@...`);
 
-    // Always check for demo users first, regardless of environment
-    const demoUser = DEMO_USERS.find(u => u.email === email && u.password === password);
-    if (demoUser) {
-      console.log(`[Sign In] Demo user authenticated: ${emailPrefix}@...`);
-      
-      // Create token for demo user
-      const token = createToken({
-        userId: demoUser.id,
-        email: demoUser.email
-      });
-      
-      // Set auth cookie - ensure it works in both HTTP and HTTPS environments
-      cookies().set({
-        name: "__clerk_db_jwt",
-        value: token,
-        httpOnly: true,
-        path: "/",
-        secure: process.env.NODE_ENV === "production",
-        maxAge: 60 * 60 * 24 * 7, // 1 week
-        sameSite: "lax"
-      });
-      
-      // Return user without password
-      const { password: _, ...userWithoutPassword } = demoUser;
-      
-      return NextResponse.json({
-        user: userWithoutPassword,
-        success: true,
-        demoMode: true
-      });
-    }
-
-    // If demo mode is forced or set in env, and not a demo user, return error suggesting demo accounts
-    if (FORCE_DEMO_MODE || process.env.DEMO_MODE === 'true') {
-      if (email !== 'admin@example.com' && email !== 'user@example.com') {
-        console.log('[Sign In] Non-demo user attempted login in demo mode');
-        return NextResponse.json({ 
-          error: "In demo mode, only demo accounts work. Please use: admin@example.com / password123", 
-          details: "Demo mode active",
-          demoMode: true,
-          success: false
-        }, { status: 401 });
-      }
-    }
-
-    // Check database connection with enhanced error info
+    // Try to authenticate with the database first (real users take priority)
     let dbConnectResult = false;
     let dbErrorMessage = "";
     
     try {
       console.log("[Sign In] Checking database connection...");
-      console.log(`[Sign In] Database URL Pattern: ${process.env.DATABASE_URL ? 
-        process.env.DATABASE_URL.split('@')[0].substring(0, 12) + '...' : 
-        'Not configured'}`);
       
       await prisma.$queryRaw`SELECT 1`;
       dbConnectResult = true;
       console.log("[Sign In] Database connection confirmed");
-    } catch (dbConnError: any) {
-      dbErrorMessage = dbConnError?.message || "Unknown database error";
-      console.error("[Sign In] Database connection failed:", dbConnError);
-      console.error(`[Sign In] Database error details: ${dbErrorMessage}`);
-      
-      // If database connection fails, suggest using demo accounts
-      return NextResponse.json({ 
-        error: "Database connection failed. Please use demo account: admin@example.com / password123", 
-        details: dbErrorMessage,
-        demoMode: true,
-        success: false
-      }, { status: 503 });
-    }
 
-    // Validate required fields
-    if (!email || !password) {
-      console.log("[Sign In] Missing email or password");
-      return NextResponse.json(
-        { error: "Email and password are required", success: false, demoMode: true },
-        { status: 400 }
-      );
-    }
-    
-    // Find the user
-    try {
+      // Database is connected, try to authenticate the user
+      if (!email || !password) {
+        console.log("[Sign In] Missing email or password");
+        return NextResponse.json(
+          { error: "Email and password are required", success: false },
+          { status: 400 }
+        );
+      }
+      
+      // Find the user
       const user = await prisma.user.findUnique({
         where: { email },
       });
 
-      // If user doesn't exist
-      if (!user) {
-        console.log(`[Sign In] User not found: ${emailPrefix}@...`);
-        return NextResponse.json(
-          { error: "Invalid email or password", success: false, demoMode: true },
-          { status: 401 }
-        );
-      }
+      // If user exists, verify the password
+      if (user) {
+        console.log(`[Sign In] User found: ${emailPrefix}@..., verifying password`);
 
-      console.log(`[Sign In] User found: ${emailPrefix}@..., verifying password`);
-
-      // Verify password
-      try {
         const isPasswordValid = await bcrypt.compare(password, user.password);
-        if (!isPasswordValid) {
-          console.log(`[Sign In] Invalid password for: ${emailPrefix}@...`);
-          return NextResponse.json(
-            { error: "Invalid email or password", success: false, demoMode: true },
-            { status: 401 }
-          );
-        }
+        if (isPasswordValid) {
+          console.log(`[Sign In] Password valid for: ${emailPrefix}@..., creating token`);
 
-        console.log(`[Sign In] Password valid for: ${emailPrefix}@..., creating token`);
-
-        // Create a JWT token with user info
-        try {
+          // Create a JWT token with user info
           const token = createToken({
             userId: user.id,
             email: user.email,
@@ -196,40 +115,106 @@ export async function POST(request: Request) {
             user: userWithoutPassword,
             success: true
           });
-        } catch (tokenError) {
-          console.error(`[Sign In] Token creation error for ${emailPrefix}@...`, tokenError);
-          return NextResponse.json({ 
-            error: `Token creation failed: ${(tokenError as Error).message}`,
-            success: false,
-            demoMode: true
-          }, { status: 500 });
+        } else {
+          console.log(`[Sign In] Invalid password for: ${emailPrefix}@...`);
+          
+          // Wrong password - check if demo user before returning error
+          const isDemoUser = DEMO_USERS.find(u => u.email === email && u.password === password);
+          if (isDemoUser) {
+            return handleDemoUser(isDemoUser, emailPrefix);
+          }
+          
+          return NextResponse.json(
+            { error: "Invalid email or password", success: false },
+            { status: 401 }
+          );
         }
-      } catch (passwordError) {
-        console.error(`[Sign In] Password comparison error for ${emailPrefix}@...`, passwordError);
-        return NextResponse.json({ 
-          error: `Authentication failed`,
-          success: false,
-          demoMode: true
-        }, { status: 500 });
+      } else {
+        console.log(`[Sign In] User not found: ${emailPrefix}@...`);
+        
+        // User not found - check if demo user before returning error
+        const isDemoUser = DEMO_USERS.find(u => u.email === email && u.password === password);
+        if (isDemoUser) {
+          return handleDemoUser(isDemoUser, emailPrefix);
+        }
+        
+        return NextResponse.json(
+          { error: "Invalid email or password", success: false },
+          { status: 401 }
+        );
       }
-    } catch (userError) {
-      console.error(`[Sign In] Database error for ${emailPrefix}@...`, userError);
+    } catch (dbError: any) {
+      // Database error
+      dbErrorMessage = dbError?.message || "Unknown database error";
+      console.error("[Sign In] Database error:", dbError);
+      console.error(`[Sign In] Database error details: ${dbErrorMessage}`);
+      
+      // On database error, fall back to demo users if enabled
+      if (USE_DEMO_FALLBACK) {
+        console.log("[Sign In] Falling back to demo users due to database error");
+        
+        // Try to find a matching demo user
+        const demoUser = DEMO_USERS.find(u => u.email === email && u.password === password);
+        if (demoUser) {
+          return handleDemoUser(demoUser, emailPrefix);
+        }
+        
+        // No matching demo user, suggest using demo credentials
+        return NextResponse.json({ 
+          error: "Authentication failed. You can use demo account: admin@example.com / password123", 
+          details: dbErrorMessage,
+          demoMode: true,
+          success: false
+        }, { status: 503 });
+      }
+      
+      // If demo fallback is disabled, return the database error
       return NextResponse.json({ 
-        error: `Database operation failed. Try demo account: admin@example.com / password123`,
-        success: false,
-        demoMode: true
+        error: "Database error. Please try again later.", 
+        details: dbErrorMessage,
+        success: false
       }, { status: 500 });
     }
   } catch (error) {
     console.error("Error authenticating user:", error);
     return NextResponse.json(
       { 
-        error: "Authentication failed. Try demo account: admin@example.com / password123", 
+        error: "Authentication failed. Please try again later.", 
         details: (error as Error).message, 
-        success: false,
-        demoMode: true 
+        success: false
       },
       { status: 500 }
     );
   }
+}
+
+// Helper function to handle demo user authentication
+function handleDemoUser(demoUser: any, emailPrefix: string) {
+  console.log(`[Sign In] Demo user authenticated: ${emailPrefix}@...`);
+  
+  // Create token for demo user
+  const token = createToken({
+    userId: demoUser.id,
+    email: demoUser.email
+  });
+  
+  // Set auth cookie
+  cookies().set({
+    name: "__clerk_db_jwt",
+    value: token,
+    httpOnly: true,
+    path: "/",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 60 * 60 * 24 * 7, // 1 week
+    sameSite: "lax"
+  });
+  
+  // Return user without password
+  const { password: _, ...userWithoutPassword } = demoUser;
+  
+  return NextResponse.json({
+    user: userWithoutPassword,
+    success: true,
+    demoMode: true
+  });
 } 

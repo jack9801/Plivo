@@ -12,7 +12,7 @@ export default function SignInPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [debugInfo, setDebugInfo] = useState<string | null>(null);
-  const [showDemoHelp, setShowDemoHelp] = useState(true);
+  const [showDemoHelp, setShowDemoHelp] = useState(false);
   const [isVercelEnv, setIsVercelEnv] = useState(false);
 
   const redirectUrl = searchParams.get("redirect_url") || "/dashboard";
@@ -25,10 +25,10 @@ export default function SignInPage() {
     const isVercel = window.location.hostname.includes('vercel.app');
     setIsVercelEnv(isVercel);
     
-    // Always show demo credentials in Vercel environment
+    // Only show demo credentials by default on Vercel environment
     if (isVercel) {
       setShowDemoHelp(true);
-      setDebugInfo("Vercel deployment detected - using demo mode");
+      setDebugInfo("Vercel deployment detected");
     } else if (process.env.NODE_ENV === 'development') {
       // Display environment info in development for debugging
       setDebugInfo(`APP_URL: ${process.env.NEXT_PUBLIC_APP_URL}`);
@@ -40,22 +40,16 @@ export default function SignInPage() {
     setPassword('password123');
   };
 
+  const toggleDemoHelp = () => {
+    setShowDemoHelp(!showDemoHelp);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
 
     try {
-      // If we're on Vercel and not using demo credentials, suggest demo credentials
-      if (isVercelEnv && 
-         email !== 'admin@example.com' && 
-         email !== 'user@example.com') {
-        setError("In the demo environment, please use one of the demo accounts below");
-        setShowDemoHelp(true);
-        setIsLoading(false);
-        return;
-      }
-
       // Basic validation
       if (!email || !password) {
         setError("Email and password are required");
@@ -165,7 +159,7 @@ export default function SignInPage() {
           <p className="text-muted-foreground mt-2">Enter your credentials to access your account</p>
           {isVercelEnv && (
             <p className="text-sm font-medium text-yellow-600 mt-2">
-              Demo Mode Active
+              Vercel Deployment
             </p>
           )}
         </div>
@@ -175,6 +169,16 @@ export default function SignInPage() {
             {error}
           </div>
         )}
+
+        {/* Demo mode toggle button */}
+        <div className="flex justify-center">
+          <button 
+            onClick={toggleDemoHelp}
+            className="px-4 py-2 text-sm font-medium text-blue-600 border border-blue-300 rounded hover:bg-blue-50"
+          >
+            {showDemoHelp ? "Hide Demo Accounts" : "Show Demo Accounts"}
+          </button>
+        </div>
 
         {showDemoHelp && (
           <div className="p-3 bg-yellow-100 border border-yellow-400 text-yellow-800 rounded">
