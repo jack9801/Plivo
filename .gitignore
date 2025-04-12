@@ -36,3 +36,6 @@ yarn-error.log*
 
 # logs
 /logs
+
+# Ignore the problematic directory
+app/sign-in/[[...sign-in]]/
