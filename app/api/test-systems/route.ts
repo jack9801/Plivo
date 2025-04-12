@@ -6,8 +6,14 @@ import { sendEmail } from "@/lib/email";
 export async function GET(request: Request) {
   const results = {
     tests: {},
-    email: {},
-    db: {},
+    email: {
+      success: true,
+      config: {}
+    },
+    db: {
+      connection: "Pending",
+      success: true
+    },
     endpoints: {}
   };
   
