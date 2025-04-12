@@ -27,8 +27,25 @@ try {
     }
   }
 
-  // Generate Prisma client
+  // Force correct DATABASE_URL in case multiple DB variables are present
+  if (!process.env.DATABASE_URL && process.env.POSTGRES_URL) {
+    console.log('Setting DATABASE_URL from POSTGRES_URL');
+    process.env.DATABASE_URL = process.env.POSTGRES_URL;
+  }
+
+  // Generate Prisma client with specific database URL if available
   console.log('Generating Prisma client...');
+  
+  // Add additional logging
+  console.log('Prisma schema path:', path.resolve('./prisma/schema.prisma'));
+  console.log('Current directory:', process.cwd());
+  
+  // List files in prisma directory to ensure schema is there
+  if (fs.existsSync('./prisma')) {
+    console.log('Prisma directory contents:', fs.readdirSync('./prisma'));
+  }
+  
+  // Generate Prisma client
   execSync('npx prisma generate', { stdio: 'inherit' });
   
   // Verify Prisma client was generated

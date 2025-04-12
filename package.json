@@ -11,7 +11,7 @@
     "lint": "next lint",
     "prisma:generate": "prisma generate",
     "prisma:seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts",
-    "postinstall": "node vercel-prisma-setup.js"
+    "postinstall": "node vercel-prisma-setup.js && prisma generate"
   },
   "prisma": {
     "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"

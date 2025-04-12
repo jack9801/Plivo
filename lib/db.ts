@@ -20,8 +20,7 @@ const isVercelBuild = (() => {
 // Determine if we are in a static generation context (during build time)
 const isStaticGeneration = 
   process.env.NEXT_PHASE === 'phase-production-build' || 
-  (process.env.VERCEL && process.env.NEXT_PUBLIC_VERCEL_ENV === 'production') ||
-  process.env.NODE_ENV === 'production' && (process.env.VERCEL_ENV || isVercelBuild);
+  (process.env.VERCEL && process.env.NEXT_PUBLIC_VERCEL_ENV === 'production' && typeof window === 'undefined');
 
 // Use a consistent type for both configurations
 const prodConfig: Prisma.PrismaClientOptions = {
@@ -34,52 +33,19 @@ const devConfig: Prisma.PrismaClientOptions = {
   errorFormat: 'pretty' as Prisma.ErrorFormat, // Add errorFormat for dev too
 };
 
-// Connection options with proper typing
-const connectionOptions = process.env.NODE_ENV === 'production' ? prodConfig : devConfig;
+// Create a reliable prisma client
+let prismaInstance: PrismaClient;
 
-// Create a mock client or real client based on environment
-const createPrismaClient = () => {
-  if (isStaticGeneration) {
-    console.log('Static generation detected, using mock database client');
-    
-    // Return a mock Prisma client for static generation
-    return new Proxy({} as PrismaClient, {
-      get: (target, prop) => {
-        if (prop === '$connect' || prop === '$disconnect') {
-          return async () => { };
-        }
-        
-        // Create a deeper proxy for method chains
-        return () => {
-          // Return a chainable proxy that resolves to empty results
-          return new Proxy({} as any, {
-            get: () => () => Promise.resolve([]),
-            apply: () => Promise.resolve([])
-          });
-        };
-      }
-    });
-  }
-  
-  try {
-    // Use a real Prisma client for runtime
-    console.log('Creating Prisma client for runtime with DATABASE_URL:', 
-      process.env.DATABASE_URL ? 
-        process.env.DATABASE_URL.substring(0, process.env.DATABASE_URL.indexOf('@')) + '****' : 
-        'undefined');
-    
-    return new PrismaClient(connectionOptions);
-  } catch (e) {
-    console.error('Error creating Prisma client:', e);
-    throw e;
-  }
-};
+if (!global.prisma) {
+  console.log('Creating new PrismaClient instance');
+  global.prisma = new PrismaClient(
+    process.env.NODE_ENV === 'production' ? prodConfig : devConfig
+  );
+}
 
-// Create or reuse the prisma client
-export const prisma = global.prisma || createPrismaClient();
+prismaInstance = global.prisma;
 
-// Only set the global prisma client in development to prevent memory leaks
-if (process.env.NODE_ENV !== 'production') global.prisma = prisma;
+export const prisma = prismaInstance;
 
 // Helper function to check database connection
 export async function checkDatabaseConnection() {
