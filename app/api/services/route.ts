@@ -21,7 +21,14 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { id, name, status, description } = body;
+    const { id, name, status, description, organizationId } = body;
+    
+    if (!organizationId) {
+      return NextResponse.json(
+        { error: "Organization ID is required" },
+        { status: 400 }
+      );
+    }
 
     const service = await prisma.service.upsert({
       where: { id: id || '' },
@@ -33,12 +40,17 @@ export async function POST(request: Request) {
       create: {
         name,
         status,
-        description
+        description,
+        organizationId
       }
     });
 
     return NextResponse.json(service);
   } catch (error) {
-    return NextResponse.json({ error: 'Failed to update service' }, { status: 500 });
+    console.error("Error creating/updating service:", error);
+    return NextResponse.json({ 
+      error: 'Failed to update service',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
   }
 } 
