@@ -4,15 +4,48 @@ declare global {
   var prisma: PrismaClient | undefined;
 }
 
-export const prisma = global.prisma || new PrismaClient({
-  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-});
+// Determine if we are in a static generation context (during build time)
+const isStaticGeneration = 
+  process.env.NEXT_PHASE === 'phase-production-build' || 
+  (process.env.VERCEL && process.env.NEXT_PUBLIC_VERCEL_ENV === 'production') ||
+  process.env.NODE_ENV === 'production' && process.env.VERCEL_ENV;
+
+// Create a mock client or real client based on environment
+const createPrismaClient = () => {
+  if (isStaticGeneration) {
+    console.log('Static generation detected, using mock database client');
+    
+    // Return a mock Prisma client for static generation
+    return new Proxy({} as PrismaClient, {
+      get: (target, prop) => {
+        if (prop === '$connect' || prop === '$disconnect') {
+          return async () => { };
+        }
+        
+        // Return empty results for any database queries during build
+        return () => Promise.resolve([]);
+      }
+    });
+  }
+  
+  // Use a real Prisma client for runtime
+  return new PrismaClient({
+    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+  });
+};
+
+export const prisma = global.prisma || createPrismaClient();
 
 if (process.env.NODE_ENV !== 'production') global.prisma = prisma;
 
 // Helper function to check database connection
 export async function checkDatabaseConnection() {
   try {
+    if (isStaticGeneration) {
+      console.log('Static generation detected, skipping database connection check');
+      return true;
+    }
+    
     await prisma.$connect();
     return true;
   } catch (error) {
@@ -24,11 +57,7 @@ export async function checkDatabaseConnection() {
 // Helper to gracefully handle database operations in API routes
 export async function withDatabase<T>(operation: () => Promise<T>, fallback: T): Promise<T> {
   try {
-    // Check if we're in a static generation context (during build)
-    const isStaticGeneration = 
-      process.env.NEXT_PHASE === 'phase-production-build' || 
-      process.env.VERCEL_ENV === 'production';
-    
+    // If we're in a static generation context, return fallback
     if (isStaticGeneration) {
       console.log('Static generation detected, returning fallback data');
       return fallback;

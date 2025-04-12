@@ -10,6 +10,14 @@ try {
   const isVercel = process.env.VERCEL === '1';
   console.log(`Running on Vercel: ${isVercel ? 'Yes' : 'No'}`);
 
+  // Log database connection info (without exposing credentials)
+  const dbUrl = process.env.DATABASE_URL || '';
+  const dbType = dbUrl.split(':')[0];
+  const dbHost = dbUrl.includes('@') ? dbUrl.split('@')[1].split(':')[0] : 'unknown';
+  
+  console.log(`Database type: ${dbType}`);
+  console.log(`Database host: ${dbHost}`);
+  
   // Make sure prisma directory exists and is copied
   if (isVercel) {
     console.log('Ensuring Prisma schema is accessible...');
@@ -29,6 +37,13 @@ try {
     console.log('✅ Prisma client successfully generated!');
   } else {
     console.warn('⚠️ Prisma client generation might have failed. Path not found:', prismaClientPath);
+  }
+
+  // Create a marker file to indicate build mode on Vercel
+  if (isVercel) {
+    // Set a marker that other parts of the app can check
+    fs.writeFileSync('.vercel-build', 'true');
+    console.log('✅ Vercel build marker created');
   }
 
   // Create a marker file to indicate success

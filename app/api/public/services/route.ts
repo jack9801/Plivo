@@ -1,15 +1,19 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { prisma, withDatabase } from "@/lib/db";
 
 export async function GET() {
   try {
-    const services = await prisma.service.findMany({
-      orderBy: {
-        createdAt: 'desc'
-      }
-    });
+    const services = await withDatabase(
+      async () => {
+        return await prisma.service.findMany({
+          orderBy: {
+            createdAt: 'desc'
+          }
+        });
+      },
+      [] // Fallback to empty array if database is unavailable
+    );
+    
     return NextResponse.json(services);
   } catch (error) {
     console.error('Error fetching services:', error);
