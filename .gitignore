@@ -39,3 +39,4 @@ yarn-error.log*
 
 # Ignore the problematic directory
 app/sign-in/[[...sign-in]]/
+app/sign-up/[[...sign-up]]/
