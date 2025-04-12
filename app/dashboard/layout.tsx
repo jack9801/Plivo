@@ -1,9 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Grid, AlertTriangle, Box, Users, Home, LogOut } from "lucide-react";
+
+interface User {
+  id: string;
+  email: string;
+  organizationId?: string;
+}
 
 export default function DashboardLayout({
   children,
@@ -15,6 +21,7 @@ export default function DashboardLayout({
   const [isLoading, setIsLoading] = useState(true);
   const [activePath, setActivePath] = useState("");
   const [isDemoMode, setIsDemoMode] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   useEffect(() => {
     // Set active path
@@ -30,22 +37,44 @@ export default function DashboardLayout({
         // First, check if we have a cookie
         const hasCookie = document.cookie.includes("__clerk_db_jwt");
         
-        // If we're in demo mode on Vercel, allow access regardless of cookie
+        if (hasCookie) {
+          // Try to get user info from /api/auth/me
+          try {
+            const response = await fetch('/api/auth/me');
+            if (response.ok) {
+              const data = await response.json();
+              console.log('Current user:', data);
+              if (data.user) {
+                setCurrentUser(data.user);
+                setIsAuthenticated(true);
+                setIsLoading(false);
+                return;
+              }
+            }
+          } catch (error) {
+            console.error('Error fetching user data:', error);
+          }
+          
+          // If API failed but we have a cookie, still authenticate
+          setIsAuthenticated(true);
+          setIsLoading(false);
+          return;
+        }
+        
+        // If we're in demo mode on Vercel, allow access with demo user
         if (isVercel) {
           console.log("Vercel environment detected, using demo mode");
+          setCurrentUser({
+            id: 'demo-admin-id',
+            email: 'admin@example.com',
+            organizationId: 'demo-admin-org'
+          });
           setIsAuthenticated(true);
           setIsLoading(false);
           return;
         }
         
-        // Otherwise, check for cookie presence
-        if (hasCookie) {
-          setIsAuthenticated(true);
-          setIsLoading(false);
-          return;
-        }
-        
-        // No cookie, redirect to sign-in
+        // No cookie and not in demo mode, redirect to sign-in
         router.push("/sign-in?redirect_url=" + encodeURIComponent(window.location.href));
       } catch (error) {
         console.error("Error checking authentication:", error);
@@ -70,6 +99,11 @@ export default function DashboardLayout({
     return null; // Will redirect in the useEffect
   }
 
+  // Get organization info to display
+  const orgId = currentUser?.organizationId || 'demo-admin-org';
+  const isDemoOrg = orgId.startsWith('demo-');
+  const orgName = isDemoOrg ? (orgId === 'demo-admin-org' ? 'Admin Demo Org' : 'User Demo Org') : 'Your Organization';
+
   return (
     <div className="flex h-screen">
       {/* Sidebar */}
@@ -80,6 +114,10 @@ export default function DashboardLayout({
             {isDemoMode && (
               <span className="text-xs font-medium text-yellow-400">Demo Mode</span>
             )}
+            <div className="mt-1 text-xs text-gray-400">
+              {currentUser?.email || 'Anonymous User'} 
+              <span className="block">{orgName}</span>
+            </div>
           </div>
           <nav className="p-2">
             <ul className="space-y-2">

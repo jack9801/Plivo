@@ -1,61 +1,47 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/auth";
-import { prisma } from "@/lib/db";
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    // Get auth cookie
-    const authCookie = cookies().get('__clerk_db_jwt')?.value;
-    
-    if (!authCookie) {
-      return NextResponse.json({
-        authenticated: false,
-        user: null
-      });
+    // Get the auth cookie
+    const cookieStore = cookies();
+    const token = cookieStore.get("__clerk_db_jwt")?.value;
+
+    if (!token) {
+      return NextResponse.json({ 
+        error: "Not authenticated", 
+        user: null 
+      }, { status: 401 });
     }
-    
-    // Verify token
-    const payload = verifyToken(authCookie);
+
+    // Verify the token
+    const payload = verifyToken(token);
     if (!payload) {
-      return NextResponse.json({
-        authenticated: false,
-        user: null
-      });
+      return NextResponse.json({ 
+        error: "Invalid token", 
+        user: null 
+      }, { status: 401 });
     }
-    
-    // Get user from database
-    const user = await prisma.user.findUnique({
-      where: { id: payload.userId },
-      select: {
-        id: true,
-        email: true,
-        createdAt: true,
-        updatedAt: true
-      }
-    });
-    
-    if (!user) {
-      // Token is valid but user no longer exists
-      cookies().delete('__clerk_db_jwt');
-      return NextResponse.json({
-        authenticated: false,
-        user: null
-      });
-    }
-    
-    return NextResponse.json({
-      authenticated: true,
-      user
+
+    // Return user info
+    const user = {
+      id: payload.userId,
+      email: payload.email,
+      organizationId: payload.organizationId
+    };
+
+    return NextResponse.json({ 
+      user,
+      isDemo: payload.userId.startsWith('demo-')
     });
   } catch (error) {
-    console.error("Error checking authentication:", error);
-    return NextResponse.json({
-      authenticated: false,
-      user: null,
-      error: "Failed to check authentication"
+    console.error("Error getting current user:", error);
+    return NextResponse.json({ 
+      error: "Failed to get current user", 
+      user: null 
     }, { status: 500 });
   }
 } 

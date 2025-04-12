@@ -13,14 +13,16 @@ const DEMO_USERS = [
     email: 'admin@example.com',
     password: 'password123',
     name: 'Admin User',
-    role: 'ADMIN'
+    role: 'ADMIN',
+    organizationId: 'demo-admin-org' // Add organization ID reference
   },
   {
     id: 'demo-user-id',
     email: 'user@example.com',
     password: 'password123',
     name: 'Demo User',
-    role: 'USER'
+    role: 'USER',
+    organizationId: 'demo-user-org' // Add organization ID reference
   }
 ];
 
@@ -54,7 +56,13 @@ export async function POST(request: Request) {
     const emailPrefix = email ? email.split('@')[0].substring(0, 3) + "***" : "undefined";
     console.log(`[Sign In] Attempt for email: ${emailPrefix}@...`);
 
-    // Try to authenticate with the database first (real users take priority)
+    // First check for demo users explicitly
+    const demoUser = DEMO_USERS.find(u => u.email === email && u.password === password);
+    if (demoUser) {
+      return handleDemoUser(demoUser, emailPrefix);
+    }
+
+    // Try to authenticate with the database (real users take priority)
     let dbConnectResult = false;
     let dbErrorMessage = "";
     
@@ -119,9 +127,11 @@ export async function POST(request: Request) {
           console.log(`[Sign In] Invalid password for: ${emailPrefix}@...`);
           
           // Wrong password - check if demo user before returning error
-          const isDemoUser = DEMO_USERS.find(u => u.email === email && u.password === password);
-          if (isDemoUser) {
-            return handleDemoUser(isDemoUser, emailPrefix);
+          if (email === 'admin@example.com' || email === 'user@example.com') {
+            return NextResponse.json({ 
+              error: "Incorrect password for demo account. Use 'password123'",
+              success: false
+            }, { status: 401 });
           }
           
           return NextResponse.json(
@@ -132,10 +142,12 @@ export async function POST(request: Request) {
       } else {
         console.log(`[Sign In] User not found: ${emailPrefix}@...`);
         
-        // User not found - check if demo user before returning error
-        const isDemoUser = DEMO_USERS.find(u => u.email === email && u.password === password);
-        if (isDemoUser) {
-          return handleDemoUser(isDemoUser, emailPrefix);
+        // User not found - check if it's a demo email with wrong password
+        if (email === 'admin@example.com' || email === 'user@example.com') {
+          return NextResponse.json({ 
+            error: "Incorrect password for demo account. Use 'password123'",
+            success: false
+          }, { status: 401 });
         }
         
         return NextResponse.json(
@@ -153,10 +165,15 @@ export async function POST(request: Request) {
       if (USE_DEMO_FALLBACK) {
         console.log("[Sign In] Falling back to demo users due to database error");
         
-        // Try to find a matching demo user
-        const demoUser = DEMO_USERS.find(u => u.email === email && u.password === password);
-        if (demoUser) {
-          return handleDemoUser(demoUser, emailPrefix);
+        // Check if this is a demo email with the wrong password
+        if (email === 'admin@example.com' || email === 'user@example.com') {
+          const demoUser = DEMO_USERS.find(u => u.email === email);
+          if (demoUser && password !== demoUser.password) {
+            return NextResponse.json({ 
+              error: "Incorrect password for demo account. Use 'password123'",
+              success: false
+            }, { status: 401 });
+          }
         }
         
         // No matching demo user, suggest using demo credentials
@@ -192,10 +209,11 @@ export async function POST(request: Request) {
 function handleDemoUser(demoUser: any, emailPrefix: string) {
   console.log(`[Sign In] Demo user authenticated: ${emailPrefix}@...`);
   
-  // Create token for demo user
+  // Create token for demo user with organization info
   const token = createToken({
     userId: demoUser.id,
-    email: demoUser.email
+    email: demoUser.email,
+    organizationId: demoUser.organizationId // Include organization ID in the token
   });
   
   // Set auth cookie

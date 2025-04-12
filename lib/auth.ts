@@ -4,6 +4,7 @@ import { verify, sign, JwtPayload } from 'jsonwebtoken';
 export interface UserJwtPayload extends JwtPayload {
   userId: string;
   email: string;
+  organizationId?: string; // Make organization ID optional
 }
 
 // Get the appropriate secret key
@@ -23,6 +24,10 @@ export function createToken(payload: Omit<UserJwtPayload, 'iat' | 'exp'>): strin
   
   try {
     console.log(`Creating token for user: ${payload.userId}`);
+    if (payload.organizationId) {
+      console.log(`Including organization: ${payload.organizationId}`);
+    }
+    
     const token = sign(
       payload,
       secretKey,
@@ -67,9 +72,10 @@ export async function getCurrentUser(token: string) {
   const payload = verifyToken(token);
   if (!payload) return null;
   
-  // If needed, you can fetch more user data from the database here
+  // Include organization if available in the token
   return {
     id: payload.userId,
-    email: payload.email
+    email: payload.email,
+    organizationId: payload.organizationId
   };
 } 
