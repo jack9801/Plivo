@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -11,10 +11,27 @@ export default function SignUpPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [demoMode, setDemoMode] = useState(true);
+
+  // Show demo mode banner on component mount
+  useEffect(() => {
+    setDemoMode(true);
+  }, []);
+
+  const handleDemoLogin = () => {
+    // Redirect to sign-in page
+    router.push("/sign-in");
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    
+    // In demo mode, don't actually try to register
+    if (demoMode) {
+      setError("Account creation is disabled in demo mode. Please use the provided demo accounts to sign in.");
+      return;
+    }
     
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -46,13 +63,19 @@ export default function SignUpPage() {
         body: JSON.stringify({ email, password })
       });
 
+      // Handle response with better error handling
+      let data;
+      try {
+        const text = await response.text();
+        data = JSON.parse(text);
+      } catch (parseError) {
+        console.error("Failed to parse response:", parseError);
+        throw new Error("Server returned an invalid response");
+      }
+
       if (!response.ok) {
-        const data = await response.json();
         throw new Error(data.error || "Failed to sign up");
       }
-      
-      // Set cookie to authenticate user
-      document.cookie = `__clerk_db_jwt=${email}; path=/; max-age=${60 * 60 * 24 * 7}`;
       
       // Redirect to the dashboard
       router.push("/dashboard");
@@ -71,6 +94,24 @@ export default function SignUpPage() {
           <h1 className="text-2xl font-bold">Create an Account</h1>
           <p className="text-muted-foreground mt-2">Sign up to access the dashboard</p>
         </div>
+
+        {demoMode && (
+          <div className="p-4 bg-yellow-100 border border-yellow-400 text-yellow-800 rounded">
+            <h3 className="font-bold">Demo Mode Active</h3>
+            <p className="mb-3">Account creation is currently disabled in demo mode.</p>
+            <p className="mb-2">Please use one of these demo accounts instead:</p>
+            <ul className="list-disc pl-5 mb-3">
+              <li>Admin: admin@example.com / password123</li>
+              <li>User: user@example.com / password123</li>
+            </ul>
+            <button
+              onClick={handleDemoLogin}
+              className="w-full py-2 px-4 bg-yellow-500 text-white rounded-md hover:bg-yellow-600"
+            >
+              Go to Sign In
+            </button>
+          </div>
+        )}
 
         {error && (
           <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded">
@@ -91,6 +132,7 @@ export default function SignUpPage() {
               required
               className="w-full p-2 border rounded-md"
               placeholder="you@example.com"
+              disabled={demoMode || isLoading}
             />
           </div>
 
@@ -105,6 +147,7 @@ export default function SignUpPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               className="w-full p-2 border rounded-md"
+              disabled={demoMode || isLoading}
             />
             <p className="text-xs text-muted-foreground">
               Must be at least 6 characters long
@@ -122,13 +165,14 @@ export default function SignUpPage() {
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
               className="w-full p-2 border rounded-md"
+              disabled={demoMode || isLoading}
             />
           </div>
 
           <button
             type="submit"
-            disabled={isLoading}
-            className="w-full py-2 px-4 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+            disabled={demoMode || isLoading}
+            className="w-full py-2 px-4 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50"
           >
             {isLoading ? "Creating account..." : "Sign Up"}
           </button>

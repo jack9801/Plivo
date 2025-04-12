@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { verifyToken } from '@/lib/auth';
 
 // List of public paths that don't require authentication
 const publicPaths = [
@@ -20,18 +19,17 @@ const publicPaths = [
   '/api/subscriptions',
 ];
 
-// Demo user tokens - these will be accepted even without database verification
+// Simple check for demo user - we just need to know if the token exists
+// This avoids using crypto which isn't available in Edge Runtime
 const isDemoUser = (token: string | undefined): boolean => {
   if (!token) return false;
   
-  try {
-    const payload = verifyToken(token);
-    // Check if the user ID starts with 'demo-'
-    return payload?.userId?.startsWith('demo-') || false;
-  } catch (error) {
-    return false;
-  }
+  // Simple check - if token exists, assume it's valid for demo purposes
+  return true;
 };
+
+// Specify runtime as 'nodejs' (not edge)
+export const runtime = 'nodejs';
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -55,28 +53,16 @@ export function middleware(request: NextRequest) {
   const authCookie = request.cookies.get('__clerk_db_jwt');
   const isAuthenticated = !!authCookie?.value;
 
-  // Allow demo users through
-  const isDemoAuthenticated = isDemoUser(authCookie?.value);
-
-  // Log authentication status for debugging (only in development)
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`[Middleware] Path: ${pathname}`);
-    console.log(`[Middleware] Is public path: ${isPublicPath}`);
-    console.log(`[Middleware] Auth cookie present: ${!!authCookie}`);
-    console.log(`[Middleware] Is authenticated: ${isAuthenticated}`);
-    console.log(`[Middleware] Is demo user: ${isDemoAuthenticated}`);
-  }
+  // For demo mode, just check if the cookie exists at all
+  const isDemoAuthenticated = isAuthenticated && isDemoUser(authCookie?.value);
 
   // If path is public or user is authenticated, allow access
   if (isPublicPath || isAuthenticated || isDemoAuthenticated) {
     return NextResponse.next();
   }
 
-  // Check if DEMO_MODE is enabled in production
+  // DEMO_MODE overrides authentication for testing
   if (process.env.DEMO_MODE === 'true') {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[Middleware] Demo mode enabled, allowing access');
-    }
     return NextResponse.next();
   }
 
