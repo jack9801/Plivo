@@ -24,13 +24,18 @@ const DEMO_USERS = [
   }
 ];
 
+// Force demo mode for Vercel deployment - ensures it works even if env vars aren't set
+const FORCE_DEMO_MODE = true;
+
 export async function POST(request: Request) {
   try {
     console.log("[Sign In] API called");
     
-    // Check environment mode
+    // Log crucial environment information
     console.log(`[Sign In] Environment: ${process.env.NODE_ENV}`);
     console.log(`[Sign In] App URL: ${process.env.NEXT_PUBLIC_APP_URL}`);
+    console.log(`[Sign In] Demo Mode Env: ${process.env.DEMO_MODE}`);
+    console.log(`[Sign In] Forced Demo Mode: ${FORCE_DEMO_MODE}`);
     
     // Safety check for request body
     let body;
@@ -40,7 +45,8 @@ export async function POST(request: Request) {
       console.error("[Sign In] Invalid JSON in request body:", jsonError);
       return NextResponse.json({ 
         error: "Invalid request format", 
-        success: false 
+        success: false,
+        demoMode: true 
       }, { status: 400 });
     }
 
@@ -50,7 +56,7 @@ export async function POST(request: Request) {
     const emailPrefix = email ? email.split('@')[0].substring(0, 3) + "***" : "undefined";
     console.log(`[Sign In] Attempt for email: ${emailPrefix}@...`);
 
-    // Check for demo users first
+    // Always check for demo users first, regardless of environment
     const demoUser = DEMO_USERS.find(u => u.email === email && u.password === password);
     if (demoUser) {
       console.log(`[Sign In] Demo user authenticated: ${emailPrefix}@...`);
@@ -61,7 +67,7 @@ export async function POST(request: Request) {
         email: demoUser.email
       });
       
-      // Set auth cookie
+      // Set auth cookie - ensure it works in both HTTP and HTTPS environments
       cookies().set({
         name: "__clerk_db_jwt",
         value: token,
@@ -80,6 +86,19 @@ export async function POST(request: Request) {
         success: true,
         demoMode: true
       });
+    }
+
+    // If demo mode is forced or set in env, and not a demo user, return error suggesting demo accounts
+    if (FORCE_DEMO_MODE || process.env.DEMO_MODE === 'true') {
+      if (email !== 'admin@example.com' && email !== 'user@example.com') {
+        console.log('[Sign In] Non-demo user attempted login in demo mode');
+        return NextResponse.json({ 
+          error: "In demo mode, only demo accounts work. Please use: admin@example.com / password123", 
+          details: "Demo mode active",
+          demoMode: true,
+          success: false
+        }, { status: 401 });
+      }
     }
 
     // Check database connection with enhanced error info
@@ -113,7 +132,7 @@ export async function POST(request: Request) {
     if (!email || !password) {
       console.log("[Sign In] Missing email or password");
       return NextResponse.json(
-        { error: "Email and password are required", success: false },
+        { error: "Email and password are required", success: false, demoMode: true },
         { status: 400 }
       );
     }
@@ -128,7 +147,7 @@ export async function POST(request: Request) {
       if (!user) {
         console.log(`[Sign In] User not found: ${emailPrefix}@...`);
         return NextResponse.json(
-          { error: "Invalid email or password", success: false },
+          { error: "Invalid email or password", success: false, demoMode: true },
           { status: 401 }
         );
       }
@@ -141,7 +160,7 @@ export async function POST(request: Request) {
         if (!isPasswordValid) {
           console.log(`[Sign In] Invalid password for: ${emailPrefix}@...`);
           return NextResponse.json(
-            { error: "Invalid email or password", success: false },
+            { error: "Invalid email or password", success: false, demoMode: true },
             { status: 401 }
           );
         }
@@ -181,14 +200,16 @@ export async function POST(request: Request) {
           console.error(`[Sign In] Token creation error for ${emailPrefix}@...`, tokenError);
           return NextResponse.json({ 
             error: `Token creation failed: ${(tokenError as Error).message}`,
-            success: false
+            success: false,
+            demoMode: true
           }, { status: 500 });
         }
       } catch (passwordError) {
         console.error(`[Sign In] Password comparison error for ${emailPrefix}@...`, passwordError);
         return NextResponse.json({ 
           error: `Authentication failed`,
-          success: false
+          success: false,
+          demoMode: true
         }, { status: 500 });
       }
     } catch (userError) {

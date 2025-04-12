@@ -27,6 +27,7 @@ const isDemoUser = (token: string | undefined): boolean => {
   try {
     // In demo mode, any token is accepted
     if (process.env.DEMO_MODE === 'true') {
+      console.log('Demo mode is active in isDemoUser check');
       return true;
     }
     
@@ -38,14 +39,17 @@ const isDemoUser = (token: string | undefined): boolean => {
   }
 };
 
-// Specify runtime as 'nodejs' (not edge)
-export const runtime = 'nodejs';
+// Use Edge runtime for better performance
+export const runtime = 'edge';
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
-  // In demo mode, bypass most authentication checks
-  const isDemoModeActive = process.env.DEMO_MODE === 'true';
+  // Force demo mode to be true for Vercel deployment
+  const forceDemoMode = true; // This ensures demo mode works even if env vars are not set
+  const isDemoModeActive = process.env.DEMO_MODE === 'true' || forceDemoMode;
+  
+  console.log(`Path: ${pathname}, Demo mode: ${isDemoModeActive}`);
   
   // Additional path checks for static assets and API routes
   if (

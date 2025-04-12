@@ -12,15 +12,25 @@ export default function SignInPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [debugInfo, setDebugInfo] = useState<string | null>(null);
-  const [showDemoHelp, setShowDemoHelp] = useState(false);
+  const [showDemoHelp, setShowDemoHelp] = useState(true);
+  const [isVercelEnv, setIsVercelEnv] = useState(false);
 
   const redirectUrl = searchParams.get("redirect_url") || "/dashboard";
 
-  // Clear any previous errors on component mount
+  // Clear any previous errors on component mount and check environment
   useEffect(() => {
     setError("");
-    // Display environment info in development for debugging
-    if (process.env.NODE_ENV === 'development') {
+    
+    // Check if we're in a Vercel environment by looking at the hostname
+    const isVercel = window.location.hostname.includes('vercel.app');
+    setIsVercelEnv(isVercel);
+    
+    // Always show demo credentials in Vercel environment
+    if (isVercel) {
+      setShowDemoHelp(true);
+      setDebugInfo("Vercel deployment detected - using demo mode");
+    } else if (process.env.NODE_ENV === 'development') {
+      // Display environment info in development for debugging
       setDebugInfo(`APP_URL: ${process.env.NEXT_PUBLIC_APP_URL}`);
     }
   }, []);
@@ -28,7 +38,6 @@ export default function SignInPage() {
   const handleDemoLogin = (demoEmail: string) => {
     setEmail(demoEmail);
     setPassword('password123');
-    setShowDemoHelp(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -37,6 +46,16 @@ export default function SignInPage() {
     setIsLoading(true);
 
     try {
+      // If we're on Vercel and not using demo credentials, suggest demo credentials
+      if (isVercelEnv && 
+         email !== 'admin@example.com' && 
+         email !== 'user@example.com') {
+        setError("In the demo environment, please use one of the demo accounts below");
+        setShowDemoHelp(true);
+        setIsLoading(false);
+        return;
+      }
+
       // Basic validation
       if (!email || !password) {
         setError("Email and password are required");
@@ -62,6 +81,7 @@ export default function SignInPage() {
       // Call the sign-in API with error handling
       let response;
       try {
+        console.log("Attempting to sign in with:", email);
         response = await fetch("/api/auth/signin", {
           method: "POST",
           headers: {
@@ -81,6 +101,7 @@ export default function SignInPage() {
       let responseText = "";
       try {
         responseText = await response.text();
+        console.log("Response text:", responseText.substring(0, 100) + "...");
       } catch (textError) {
         console.error("Error getting response text:", textError);
         setError("Failed to read server response. Please try again later.");
@@ -142,6 +163,11 @@ export default function SignInPage() {
         <div className="text-center">
           <h1 className="text-2xl font-bold">Sign In</h1>
           <p className="text-muted-foreground mt-2">Enter your credentials to access your account</p>
+          {isVercelEnv && (
+            <p className="text-sm font-medium text-yellow-600 mt-2">
+              Demo Mode Active
+            </p>
+          )}
         </div>
 
         {error && (

@@ -1,10 +1,6 @@
 {
-  "/not-found": "app/not-found.js",
-  "/api/organizations/route": "app/api/organizations/route.js",
   "/sign-in/[[...sign-in]]/page": "app/sign-in/[[...sign-in]]/page.js",
-  "/api/organizations/[id]/services/route": "app/api/organizations/[id]/services/route.js",
   "/sign-up/[[...sign-up]]/page": "app/sign-up/[[...sign-up]]/page.js",
-  "/api/auth/signin/route": "app/api/auth/signin/route.js",
-  "/dashboard/services/page": "app/dashboard/services/page.js",
-  "/dashboard/page": "app/dashboard/page.js"
+  "/dashboard/page": "app/dashboard/page.js",
+  "/dashboard/services/page": "app/dashboard/services/page.js"
 }

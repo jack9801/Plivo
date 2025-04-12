@@ -12,9 +12,15 @@ export default function SignUpPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [demoMode, setDemoMode] = useState(true);
+  const [isVercelEnv, setIsVercelEnv] = useState(false);
 
-  // Show demo mode banner on component mount
+  // Show demo mode banner on component mount and check environment
   useEffect(() => {
+    // Check if we're in a Vercel environment
+    const isVercel = window.location.hostname.includes('vercel.app');
+    setIsVercelEnv(isVercel);
+    
+    // Always enable demo mode on Vercel or if demo mode is enabled locally
     setDemoMode(true);
   }, []);
 
@@ -27,8 +33,8 @@ export default function SignUpPage() {
     e.preventDefault();
     setError("");
     
-    // In demo mode, don't actually try to register
-    if (demoMode) {
+    // In demo mode or Vercel environment, don't actually try to register
+    if (demoMode || isVercelEnv) {
       setError("Account creation is disabled in demo mode. Please use the provided demo accounts to sign in.");
       return;
     }
@@ -93,9 +99,14 @@ export default function SignUpPage() {
         <div className="text-center">
           <h1 className="text-2xl font-bold">Create an Account</h1>
           <p className="text-muted-foreground mt-2">Sign up to access the dashboard</p>
+          {isVercelEnv && (
+            <p className="text-sm font-medium text-yellow-600 mt-2">
+              Demo Mode Active
+            </p>
+          )}
         </div>
 
-        {demoMode && (
+        {(demoMode || isVercelEnv) && (
           <div className="p-4 bg-yellow-100 border border-yellow-400 text-yellow-800 rounded">
             <h3 className="font-bold">Demo Mode Active</h3>
             <p className="mb-3">Account creation is currently disabled in demo mode.</p>
@@ -132,7 +143,7 @@ export default function SignUpPage() {
               required
               className="w-full p-2 border rounded-md"
               placeholder="you@example.com"
-              disabled={demoMode || isLoading}
+              disabled={demoMode || isVercelEnv || isLoading}
             />
           </div>
 
@@ -147,7 +158,7 @@ export default function SignUpPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               className="w-full p-2 border rounded-md"
-              disabled={demoMode || isLoading}
+              disabled={demoMode || isVercelEnv || isLoading}
             />
             <p className="text-xs text-muted-foreground">
               Must be at least 6 characters long
@@ -165,13 +176,13 @@ export default function SignUpPage() {
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
               className="w-full p-2 border rounded-md"
-              disabled={demoMode || isLoading}
+              disabled={demoMode || isVercelEnv || isLoading}
             />
           </div>
 
           <button
             type="submit"
-            disabled={demoMode || isLoading}
+            disabled={demoMode || isVercelEnv || isLoading}
             className="w-full py-2 px-4 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50"
           >
             {isLoading ? "Creating account..." : "Sign Up"}

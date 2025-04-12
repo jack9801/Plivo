@@ -14,19 +14,48 @@ export default function DashboardLayout({
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [activePath, setActivePath] = useState("");
+  const [isDemoMode, setIsDemoMode] = useState(false);
 
   useEffect(() => {
     // Set active path
     setActivePath(window.location.pathname);
     
-    // Check for authentication
-    const hasCookie = document.cookie.includes("__clerk_db_jwt");
-    setIsAuthenticated(hasCookie);
-    setIsLoading(false);
-
-    if (!hasCookie) {
-      router.push("/sign-in?redirect_url=" + encodeURIComponent(window.location.href));
-    }
+    // Check for Vercel deployment (demo mode)
+    const isVercel = window.location.hostname.includes('vercel.app');
+    setIsDemoMode(isVercel);
+    
+    // Authentication check
+    const checkAuth = async () => {
+      try {
+        // First, check if we have a cookie
+        const hasCookie = document.cookie.includes("__clerk_db_jwt");
+        
+        // If we're in demo mode on Vercel, allow access regardless of cookie
+        if (isVercel) {
+          console.log("Vercel environment detected, using demo mode");
+          setIsAuthenticated(true);
+          setIsLoading(false);
+          return;
+        }
+        
+        // Otherwise, check for cookie presence
+        if (hasCookie) {
+          setIsAuthenticated(true);
+          setIsLoading(false);
+          return;
+        }
+        
+        // No cookie, redirect to sign-in
+        router.push("/sign-in?redirect_url=" + encodeURIComponent(window.location.href));
+      } catch (error) {
+        console.error("Error checking authentication:", error);
+        setIsAuthenticated(false);
+        setIsLoading(false);
+        router.push("/sign-in?redirect_url=" + encodeURIComponent(window.location.href));
+      }
+    };
+    
+    checkAuth();
   }, [router]);
 
   if (isLoading) {
@@ -48,6 +77,9 @@ export default function DashboardLayout({
         <div>
           <div className="p-4 mt-2">
             <h2 className="text-xl font-bold">Status Page</h2>
+            {isDemoMode && (
+              <span className="text-xs font-medium text-yellow-400">Demo Mode</span>
+            )}
           </div>
           <nav className="p-2">
             <ul className="space-y-2">
