@@ -19,9 +19,19 @@ const DEMO_ORGANIZATIONS = [
   }
 ];
 
+// Create an in-memory store for dynamically created demo organizations
+const dynamicDemoOrgs = [];
+
 // GET /api/organizations - Get all organizations
 export async function GET() {
   try {
+    // Always return demo organizations if demo mode is enabled
+    if (process.env.DEMO_MODE === 'true') {
+      console.log("Demo mode is enabled, returning demo organizations");
+      // Return both pre-defined and dynamically created demo orgs
+      return NextResponse.json([...DEMO_ORGANIZATIONS, ...dynamicDemoOrgs]);
+    }
+    
     // Try to get real organizations from database
     const organizations = await prisma.organization.findMany({
       orderBy: {
@@ -60,7 +70,33 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check if organization with the same slug already exists
+    // Check if demo mode is enabled - create a demo organization instead
+    if (process.env.DEMO_MODE === 'true') {
+      // Generate a unique ID for the demo org
+      const timestamp = new Date().getTime();
+      const demoOrg = {
+        id: `demo-org-${timestamp}`,
+        name: name || "New Demo Organization",
+        slug: slug || `demo-org-${timestamp}`,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        demoMode: true
+      };
+      
+      // Store the new org in our in-memory collection
+      dynamicDemoOrgs.push(demoOrg);
+      
+      return NextResponse.json({
+        ...demoOrg,
+        defaultSubscription: defaultEmail ? {
+          email: defaultEmail,
+          confirmed: true,
+          id: `demo-sub-${timestamp}`
+        } : null
+      }, { status: 201 });
+    }
+
+    // For non-demo mode, check if organization with the same slug already exists
     const existingOrg = await prisma.organization.findUnique({
       where: { slug }
     });

@@ -45,6 +45,9 @@ const DEMO_SERVICES = [
   }
 ];
 
+// In-memory store for dynamically created demo services
+const dynamicDemoServices: any[] = [];
+
 // GET /api/services - Get all services
 export async function GET(request: NextRequest) {
   try {
@@ -58,12 +61,26 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // If this is a demo organization, return demo services
-    if (organizationId.startsWith('demo-')) {
-      const filteredServices = DEMO_SERVICES.filter(
+    // If demo mode is enabled or this is a demo organization, return demo services
+    const isDemoMode = process.env.DEMO_MODE === 'true' || organizationId.startsWith('demo-');
+    
+    if (isDemoMode) {
+      console.log(`Returning demo services for organization: ${organizationId}`);
+      
+      // Get all default demo services for this organization
+      const defaultDemoServices = DEMO_SERVICES.filter(
         service => service.organizationId === organizationId
       );
-      return NextResponse.json(filteredServices);
+      
+      // Find any dynamically created services for this organization
+      const dynamicServices = dynamicDemoServices.filter(
+        service => service.organizationId === organizationId
+      );
+      
+      // Combine both sets of services
+      const allServices = [...defaultDemoServices, ...dynamicServices];
+      
+      return NextResponse.json(allServices);
     }
 
     // Otherwise try to get real services from database
@@ -86,11 +103,11 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("Error fetching services:", error);
 
-    // If error occurred for a demo organization, return demo services
+    // If error occurred, check if demo mode fallback should be used
     const { searchParams } = new URL(request.url);
     const organizationId = searchParams.get('organizationId');
     
-    if (organizationId && organizationId.startsWith('demo-')) {
+    if (process.env.DEMO_MODE === 'true' || (organizationId && organizationId.startsWith('demo-'))) {
       const filteredServices = DEMO_SERVICES.filter(
         service => service.organizationId === organizationId
       );
@@ -127,11 +144,14 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Handle the demo organization
-    if (organizationId === DEMO_ORG_ID) {
+    // Handle demo mode or demo organization
+    const isDemoMode = process.env.DEMO_MODE === 'true' || organizationId.startsWith('demo-');
+    
+    if (isDemoMode) {
       // Create a mock service for demo
+      const serviceId = id || generateUUID();
       const newService = {
-        id: id || generateUUID(),
+        id: serviceId,
         name,
         description,
         status,
@@ -140,9 +160,27 @@ export async function POST(request: NextRequest) {
         updatedAt: new Date(),
       };
 
+      // Store the service in our dynamic services array if it doesn't already exist
+      if (!id) {
+        dynamicDemoServices.push(newService);
+      } else {
+        // Update existing service if found
+        const existingIndex = dynamicDemoServices.findIndex(s => s.id === id);
+        if (existingIndex >= 0) {
+          dynamicDemoServices[existingIndex] = newService;
+        } else {
+          dynamicDemoServices.push(newService);
+        }
+      }
+
+      console.log(`Demo service ${id ? 'updated' : 'created'}: ${name} (${serviceId})`);
+      
       return NextResponse.json({ 
         service: newService,
-        message: "Service created successfully (Demo Mode)" 
+        message: id 
+          ? "Service updated successfully (Demo Mode)" 
+          : "Service created successfully (Demo Mode)",
+        demoMode: true
       }, { status: 201 });
     }
 
@@ -178,11 +216,26 @@ export async function POST(request: NextRequest) {
     
     // Check if this is a demo organization and handle the error gracefully
     try {
-      if (body && body.organizationId === DEMO_ORG_ID) {
+      if (process.env.DEMO_MODE === 'true' || (body && body.organizationId.startsWith('demo-'))) {
+        // Create a fallback service with minimal data
+        const fallbackService = {
+          id: generateUUID(),
+          name: body?.name || "Emergency Fallback Service",
+          status: body?.status || "OPERATIONAL",
+          description: body?.description || "Created during error recovery",
+          organizationId: body?.organizationId || DEMO_ORG_ID,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+        
+        // Add to dynamic services for future retrieval
+        dynamicDemoServices.push(fallbackService);
+        
         // Return a mock success for demo organization even if there was an error
         return NextResponse.json({ 
-          message: "Service operation handled in demo mode",
-          error: "Backend error occurred but demo mode recovered" 
+          service: fallbackService,
+          message: "Service operation handled in demo mode (error recovery)",
+          demoMode: true
         }, { status: 200 });
       }
     } catch (e) {
