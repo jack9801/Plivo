@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/db";
 import { sendEmail, getServiceStatusChangeTemplate } from "@/lib/email";
 
 // GET /api/services/[id] - Get a specific service

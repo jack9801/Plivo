@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 
 // GET /api/incidents/[id]/updates - Get all updates for a specific incident
